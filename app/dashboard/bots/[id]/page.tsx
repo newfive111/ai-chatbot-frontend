@@ -32,7 +32,7 @@ export default function BotDetailPage() {
   const router = useRouter();
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
-  const [tab, setTab] = useState<"knowledge" | "persona" | "chat" | "embed" | "settings">("knowledge");
+  const [tab, setTab] = useState<"knowledge" | "persona" | "chat" | "embed" | "settings" | "assistant">("knowledge");
   const [faqText, setFaqText] = useState("");
   const [question, setQuestion] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -76,18 +76,23 @@ export default function BotDetailPage() {
   // Onboarding checklist
   const [chatTested, setChatTested] = useState(false);
 
+  // AI 助手 tab
+  const [assistantMsgs, setAssistantMsgs] = useState<{ role: "user" | "assistant"; content: string }[]>([
+    { role: "assistant", content: "👋 你好！我是設定助手「小懶」。\n\n告訴我你想要什麼樣的機器人，我來幫你設定！例如：「幫我設定一個賣保險的機器人，要收集姓名和電話」" }
+  ]);
+  const [assistantInput, setAssistantInput] = useState("");
+  const [assistantLoading, setAssistantLoading] = useState(false);
+  const assistantSessionId = useRef(`assistant_${id}_${Date.now()}`);
+  const assistantBottomRef = useRef<HTMLDivElement>(null);
+
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const headers = { Authorization: `Bearer ${token}` };
 
-  // ── 初始化：載入 bot 設定 + 歡迎訊息 ──
-  useEffect(() => {
+  // ── 載入 bot 設定（可被 AI 助手呼叫刷新）──
+  const fetchBotSettings = async () => {
     if (!id) return;
-    // Check localStorage for tested state
-    const tested = localStorage.getItem(`tested_${id}`) === "true";
-    setChatTested(tested);
-
-    // Load bot settings
-    axios.get(`${API}/bots/${id}`, { headers }).then((res) => {
+    try {
+      const res = await axios.get(`${API}/bots/${id}`, { headers });
       const data: any = res.data;
       setBotSettings(data);
       setSheetId(data.sheet_id || "");
@@ -96,10 +101,18 @@ export default function BotDetailPage() {
       setWelcomeMessage(data.welcome_message || "");
       setQuickReplies((data.quick_replies || []).map((q: any) => q.label || q));
       setLineConfigured(!!(data.line_channel_secret && data.line_channel_access_token));
-    }).catch((err) => {
+    } catch (err: any) {
       console.error("[BotDetail] 載入 Bot 設定失敗", err?.response?.status, err?.message);
       setMessage("⚠️ 載入設定失敗，請重新整理頁面");
-    });
+    }
+  };
+
+  // ── 初始化 ──
+  useEffect(() => {
+    if (!id) return;
+    const tested = localStorage.getItem(`tested_${id}`) === "true";
+    setChatTested(tested);
+    fetchBotSettings();
   }, [id]);
 
   // ── 進測試 tab → 顯示歡迎訊息 ──
@@ -114,6 +127,10 @@ export default function BotDetailPage() {
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
+
+  useEffect(() => {
+    assistantBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [assistantMsgs]);
 
   // ── 知識庫 ──
   const fetchChunks = async () => {
@@ -211,6 +228,31 @@ export default function BotDetailPage() {
         setShowQuickReplies(true);
       }, 100);
     }
+  };
+
+  // ── AI 助手：發送訊息 ──
+  const sendAssistantMsg = async (text: string) => {
+    if (!text.trim() || assistantLoading) return;
+    const userMsg = text.trim();
+    setAssistantInput("");
+    setAssistantMsgs((prev) => [...prev, { role: "user", content: userMsg }]);
+    setAssistantLoading(true);
+    try {
+      const res = await axios.post(`${API}/assistant/chat`, {
+        bot_id: id,
+        message: userMsg,
+        session_id: assistantSessionId.current,
+      }, { headers });
+      setAssistantMsgs((prev) => [...prev, { role: "assistant", content: res.data.reply }]);
+      // 助手可能已修改設定，刷新
+      fetchBotSettings();
+    } catch {
+      setAssistantMsgs((prev) => [
+        ...prev,
+        { role: "assistant", content: "⚠️ 發生錯誤，請確認 Gemini API Key 已在「設定」頁面填入。" }
+      ]);
+    }
+    setAssistantLoading(false);
   };
 
   // ── Settings：儲存 API Key ──
@@ -339,15 +381,17 @@ export default function BotDetailPage() {
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6 border-b border-gray-800 overflow-x-auto">
-          {(["knowledge", "persona", "chat", "embed", "settings"] as const).map((t) => (
+          {(["knowledge", "persona", "chat", "embed", "settings", "assistant"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={`shrink-0 px-4 py-2 text-sm font-medium transition border-b-2 -mb-px ${
-                tab === t ? "border-blue-500 text-white" : "border-transparent text-gray-500 hover:text-white"
+                tab === t
+                  ? t === "assistant" ? "border-purple-500 text-white" : "border-blue-500 text-white"
+                  : "border-transparent text-gray-500 hover:text-white"
               }`}
             >
-              {{ knowledge: "📚 知識庫", persona: "🤖 角色", chat: "💬 測試對話", embed: "🔗 嵌入代碼", settings: "⚙️ 設定" }[t]}
+              {{ knowledge: "📚 知識庫", persona: "🤖 角色", chat: "💬 測試對話", embed: "🔗 嵌入代碼", settings: "⚙️ 設定", assistant: "✨ AI 助手" }[t]}
             </button>
           ))}
         </div>
@@ -968,6 +1012,106 @@ export default function BotDetailPage() {
             </div>
           </div>
         )}
+        {/* ── AI 助手 Tab ── */}
+        {tab === "assistant" && (
+          <div className="flex flex-col gap-4">
+            {/* 說明卡 */}
+            <div className="bg-purple-900/20 border border-purple-800/40 rounded-xl px-4 py-3">
+              <p className="text-sm text-purple-300 leading-relaxed">
+                ✨ <strong>設定助手「小懶」</strong> 使用 AI 幫你直接操作 Bot 設定。告訴它你的需求，它會幫你寫角色描述、設定收集欄位、更新歡迎訊息等。
+              </p>
+              <p className="text-xs text-purple-400/70 mt-1.5">
+                ⚠️ 需先設定 Gemini API Key（設定頁面）才能使用。設定變更會即時套用。
+              </p>
+            </div>
+
+            {/* 快速啟動建議 */}
+            {assistantMsgs.length <= 1 && (
+              <div className="flex flex-wrap gap-2">
+                {[
+                  "幫我設定角色描述",
+                  "設定要收集的客戶資料",
+                  "幫我寫歡迎訊息",
+                  "查看目前設定",
+                ].map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    onClick={() => sendAssistantMsg(suggestion)}
+                    className="px-3 py-1.5 text-xs bg-purple-900/40 border border-purple-800/50 hover:bg-purple-800/50 text-purple-300 rounded-full transition"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* 聊天介面 */}
+            <div className="bg-gray-900 rounded-xl flex flex-col" style={{ height: "540px" }}>
+              <div className="flex justify-between items-center px-5 py-4 border-b border-gray-800">
+                <div>
+                  <h2 className="font-semibold">✨ AI 設定助手</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">對話完成後，設定會即時套用到你的 Bot</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setAssistantMsgs([
+                      { role: "assistant", content: "👋 你好！我是設定助手「小懶」。\n\n告訴我你想要什麼樣的機器人，我來幫你設定！" }
+                    ]);
+                    assistantSessionId.current = `assistant_${id}_${Date.now()}`;
+                  }}
+                  className="text-xs text-gray-400 hover:text-white transition px-3 py-1 bg-gray-800 rounded-lg"
+                >
+                  🔄 重置對話
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
+                {assistantMsgs.map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+                      msg.role === "user"
+                        ? "bg-blue-600 text-white rounded-br-sm"
+                        : "bg-purple-900/40 border border-purple-800/40 text-gray-100 rounded-bl-sm"
+                    }`}>
+                      {msg.content}
+                    </div>
+                  </div>
+                ))}
+                {assistantLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-purple-900/40 border border-purple-800/40 text-purple-300 px-4 py-3 rounded-2xl rounded-bl-sm text-sm flex items-center gap-2">
+                      <span className="animate-pulse">●</span>
+                      <span className="animate-pulse" style={{ animationDelay: "0.2s" }}>●</span>
+                      <span className="animate-pulse" style={{ animationDelay: "0.4s" }}>●</span>
+                    </div>
+                  </div>
+                )}
+                <div ref={assistantBottomRef} />
+              </div>
+
+              <form
+                onSubmit={(e) => { e.preventDefault(); sendAssistantMsg(assistantInput); }}
+                className="flex gap-2 px-4 py-4 border-t border-gray-800"
+              >
+                <input
+                  type="text"
+                  placeholder="例：幫我設定一個賣保險的機器人，要收集姓名和電話..."
+                  value={assistantInput}
+                  onChange={(e) => setAssistantInput(e.target.value)}
+                  className="flex-1 bg-gray-800 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                />
+                <button
+                  type="submit"
+                  disabled={assistantLoading || !assistantInput.trim()}
+                  className="bg-purple-600 hover:bg-purple-700 px-5 py-3 rounded-xl font-semibold transition disabled:opacity-50 text-sm"
+                >
+                  送出
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
       </div>
     </main>
   );

@@ -287,7 +287,7 @@ export default function BotDetailPage() {
   const embedCode = `<script>
   window.ChatbotConfig = { botId: "${id}" };
 </script>
-<script src="https://your-domain.com/widget.js" async></script>`;
+<script src="https://ai-chatbot-frontend-38vx81gy4-newfive111s-projects.vercel.app/widget.js" async></script>`;
 
   const lineWebhookUrl = `https://graceful-patience-production-0170.up.railway.app/line/webhook/${id}`;
 

@@ -841,7 +841,15 @@ export default function BotDetailPage() {
                     複製
                   </button>
                 </div>
-                <p className="text-gray-400 mt-2">3. 把試算表網址中的 ID 貼到下方</p>
+                <div className="mt-3">
+                  <p className="text-gray-400">3. 開啟試算表，複製網址列中間那段 ID（如下圖）</p>
+                  <div className="mt-2 bg-gray-700 rounded px-3 py-2 font-mono text-xs leading-relaxed">
+                    <span className="text-gray-500">https://docs.google.com/spreadsheets/d/</span>
+                    <span className="text-yellow-400 font-bold">1_jQr75dpxABCDEFGHIJKLMN</span>
+                    <span className="text-gray-500">/edit</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1.5">👆 黃色部分就是 ID，複製後貼到下方欄位</p>
+                </div>
               </div>
 
               <div className="mb-4">

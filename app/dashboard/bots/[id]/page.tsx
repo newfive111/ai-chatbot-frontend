@@ -16,6 +16,9 @@ interface BotSettings {
   collect_fields?: string[];
   welcome_message?: string;
   quick_replies?: { label: string }[];
+  calendar_id?: string;
+  slot_duration_minutes?: number;
+  business_hours?: { start: string; end: string; weekdays: number[] };
 }
 
 const API = "https://graceful-patience-production-0170.up.railway.app";
@@ -62,6 +65,14 @@ export default function BotDetailPage() {
   const [savingLine, setSavingLine] = useState(false);
   const [lineConfigured, setLineConfigured] = useState(false);
 
+  // 預約系統
+  const [calendarId, setCalendarId] = useState("");
+  const [slotDuration, setSlotDuration] = useState(60);
+  const [businessStart, setBusinessStart] = useState("09:00");
+  const [businessEnd, setBusinessEnd] = useState("18:00");
+  const [workWeekdays, setWorkWeekdays] = useState<number[]>([1,2,3,4,5]);
+  const [savingCalendar, setSavingCalendar] = useState(false);
+
   // 角色 tab state
   const [systemPrompt, setSystemPrompt] = useState("");
   const [savingPrompt, setSavingPrompt] = useState(false);
@@ -101,6 +112,11 @@ export default function BotDetailPage() {
       setWelcomeMessage(data.welcome_message || "");
       setQuickReplies((data.quick_replies || []).map((q: any) => q.label || q));
       setLineConfigured(!!(data.line_channel_secret && data.line_channel_access_token));
+      setCalendarId(data.calendar_id || "");
+      setSlotDuration(data.slot_duration_minutes || 60);
+      setBusinessStart(data.business_hours?.start || "09:00");
+      setBusinessEnd(data.business_hours?.end || "18:00");
+      setWorkWeekdays(data.business_hours?.weekdays || [1,2,3,4,5]);
     } catch (err: any) {
       console.error("[BotDetail] 載入 Bot 設定失敗", err?.response?.status, err?.message);
       setMessage("⚠️ 載入設定失敗，請重新整理頁面");
@@ -285,6 +301,19 @@ export default function BotDetailPage() {
     setBotSettings((prev) => prev ? { ...prev, welcome_message: welcomeMessage } : prev);
     setMessage("✅ 引導設定已儲存");
     setSavingGuide(false);
+    setTimeout(() => setMessage(""), 3000);
+  };
+
+  // ── Settings：儲存預約系統 ──
+  const saveCalendar = async () => {
+    setSavingCalendar(true);
+    await axios.patch(`${API}/bots/${id}`, {
+      calendar_id: calendarId || null,
+      slot_duration_minutes: slotDuration,
+      business_hours: { start: businessStart, end: businessEnd, weekdays: workWeekdays },
+    }, { headers });
+    setMessage("✅ 預約系統設定已儲存");
+    setSavingCalendar(false);
     setTimeout(() => setMessage(""), 3000);
   };
 
@@ -913,6 +942,138 @@ export default function BotDetailPage() {
                 className="w-full bg-green-600 hover:bg-green-700 py-3 rounded-lg font-semibold transition disabled:opacity-50"
               >
                 {savingSheet ? "儲存中..." : "💾 儲存 Sheet 設定"}
+              </button>
+            </div>
+
+            {/* 📅 預約系統 */}
+            <div className="bg-gray-900 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="font-semibold">📅 預約系統</h2>
+                {calendarId && (
+                  <span className="text-green-400 text-xs bg-green-900/40 border border-green-800 px-2 py-0.5 rounded-full">✅ 已啟用</span>
+                )}
+              </div>
+              <p className="text-gray-400 text-sm mb-5">
+                啟用後 Bot 可自動查詢空檔並在 Google Calendar 建立預約。
+              </p>
+
+              {/* 設定步驟說明 */}
+              <div className="bg-gray-800 rounded-xl p-4 mb-5 text-sm">
+                <p className="text-gray-300 font-medium mb-2">📋 設定步驟：</p>
+                <ol className="text-gray-400 flex flex-col gap-2">
+                  <li className="flex items-start gap-2">
+                    <span className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">1</span>
+                    開啟 <a href="https://calendar.google.com" target="_blank" className="text-blue-400 underline">Google Calendar</a>，建立一個專用行事曆（例如「預約系統」）
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">2</span>
+                    <div>
+                      點該行事曆旁的 ⋮ → 「設定及共用」→「與特定使用者或群組共用」<br/>
+                      加入以下 Email，並設為<strong className="text-white">「更改事件」</strong>：
+                      <div className="mt-1.5 bg-gray-700 rounded px-3 py-1.5 font-mono text-xs text-green-400 flex items-center justify-between">
+                        <span>bothelper-sheets@bothelper-489007.iam.gserviceaccount.com</span>
+                        <button
+                          onClick={() => { navigator.clipboard.writeText("bothelper-sheets@bothelper-489007.iam.gserviceaccount.com"); setMessage("✅ Email 已複製"); setTimeout(() => setMessage(""), 2000); }}
+                          className="text-gray-400 hover:text-white ml-3 text-xs shrink-0"
+                        >複製</button>
+                      </div>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">3</span>
+                    <div>
+                      在「整合行事曆」區塊找到「行事曆 ID」，格式類似：
+                      <div className="mt-1 bg-gray-700 rounded px-2 py-1 font-mono text-xs text-yellow-400">
+                        abc123@group.calendar.google.com
+                      </div>
+                      複製後貼到下方欄位
+                    </div>
+                  </li>
+                </ol>
+              </div>
+
+              {/* Calendar ID */}
+              <div className="mb-4">
+                <label className="text-sm text-gray-400 mb-1.5 block">Google Calendar ID</label>
+                <input
+                  type="text"
+                  placeholder="abc123@group.calendar.google.com（留空=關閉預約功能）"
+                  value={calendarId}
+                  onChange={(e) => setCalendarId(e.target.value)}
+                  className="w-full bg-gray-800 px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                />
+              </div>
+
+              {/* 每次時長 */}
+              <div className="mb-4">
+                <label className="text-sm text-gray-400 mb-2 block">每次預約時長</label>
+                <div className="flex gap-2 flex-wrap">
+                  {[30, 60, 90, 120].map((min) => (
+                    <button
+                      key={min}
+                      onClick={() => setSlotDuration(min)}
+                      className={`px-4 py-2 rounded-lg text-sm transition ${
+                        slotDuration === min
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-800 text-gray-400 hover:text-white"
+                      }`}
+                    >
+                      {min} 分鐘
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 上班時間 */}
+              <div className="mb-4">
+                <label className="text-sm text-gray-400 mb-2 block">上班時間</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="time"
+                    value={businessStart}
+                    onChange={(e) => setBusinessStart(e.target.value)}
+                    className="bg-gray-800 px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                  <span className="text-gray-500">～</span>
+                  <input
+                    type="time"
+                    value={businessEnd}
+                    onChange={(e) => setBusinessEnd(e.target.value)}
+                    className="bg-gray-800 px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* 上班日 */}
+              <div className="mb-5">
+                <label className="text-sm text-gray-400 mb-2 block">上班日</label>
+                <div className="flex gap-2">
+                  {[["一",1],["二",2],["三",3],["四",4],["五",5],["六",6],["日",7]].map(([label, day]) => (
+                    <button
+                      key={day}
+                      onClick={() => setWorkWeekdays((prev) =>
+                        prev.includes(day as number)
+                          ? prev.filter((d) => d !== day)
+                          : [...prev, day as number].sort()
+                      )}
+                      className={`w-9 h-9 rounded-full text-sm font-medium transition ${
+                        workWeekdays.includes(day as number)
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-800 text-gray-500 hover:text-white"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={saveCalendar}
+                disabled={savingCalendar}
+                className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition disabled:opacity-50"
+              >
+                {savingCalendar ? "儲存中..." : "💾 儲存預約設定"}
               </button>
             </div>
 

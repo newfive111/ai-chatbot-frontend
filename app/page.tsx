@@ -4,7 +4,7 @@ export default function Home() {
 
       {/* 頂部導覽 */}
       <nav className="flex justify-between items-center px-8 py-5 border-b border-gray-800">
-        <span className="text-xl font-bold">🤖 BotHelper</span>
+        <span className="text-xl font-bold">😴 懶得回 LazyReply</span>
         <div className="flex gap-3">
           <a href="/login" className="px-5 py-2 text-gray-300 hover:text-white transition text-sm">
             登入

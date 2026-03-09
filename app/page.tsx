@@ -5,8 +5,11 @@ export default function Home() {
       {/* 頂部導覽 */}
       <nav className="flex justify-between items-center px-8 py-5 border-b border-gray-800">
         <span className="text-xl font-bold">😴 懶得回 LazyReply</span>
-        <div className="flex gap-3">
-          <a href="/login" className="px-5 py-2 text-gray-300 hover:text-white transition text-sm">
+        <div className="flex gap-3 items-center">
+          <a href="/pricing" className="px-4 py-2 text-gray-300 hover:text-white transition text-sm">
+            定價
+          </a>
+          <a href="/login" className="px-4 py-2 text-gray-300 hover:text-white transition text-sm">
             登入
           </a>
           <a href="/register" className="px-5 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold transition">

@@ -26,7 +26,11 @@ interface AnalyticsData {
   total: number;
   today: number;
   this_week: number;
+  prev_week: number;
+  week_growth: number;
   daily_counts: { date: string; count: number }[];
+  hourly_distribution: { hour: number; count: number }[];
+  top_questions: { question: string; count: number }[];
   recent_questions: string[];
 }
 
@@ -1304,18 +1308,27 @@ export default function BotDetailPage() {
               <div className="text-center text-gray-500 py-20">載入中...</div>
             ) : analyticsData ? (
               <>
-                {/* 3 個統計卡片 */}
-                <div className="grid grid-cols-3 gap-4">
-                  {[
-                    { label: "總對話數", value: analyticsData.total, color: "text-blue-400" },
-                    { label: "今日", value: analyticsData.today, color: "text-green-400" },
-                    { label: "本週", value: analyticsData.this_week, color: "text-yellow-400" },
-                  ].map((stat) => (
-                    <div key={stat.label} className="bg-gray-900 rounded-xl p-5 text-center">
-                      <div className={`text-3xl font-bold ${stat.color}`}>{stat.value}</div>
-                      <div className="text-gray-400 text-sm mt-1">{stat.label}</div>
+                {/* 統計卡片列 */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-gray-900 rounded-xl p-5 text-center">
+                    <div className="text-3xl font-bold text-blue-400">{analyticsData.total}</div>
+                    <div className="text-gray-400 text-sm mt-1">總對話數</div>
+                  </div>
+                  <div className="bg-gray-900 rounded-xl p-5 text-center">
+                    <div className="text-3xl font-bold text-green-400">{analyticsData.today}</div>
+                    <div className="text-gray-400 text-sm mt-1">今日</div>
+                  </div>
+                  <div className="bg-gray-900 rounded-xl p-5 text-center">
+                    <div className="text-3xl font-bold text-yellow-400">{analyticsData.this_week}</div>
+                    <div className="text-gray-400 text-sm mt-1">本週</div>
+                  </div>
+                  <div className="bg-gray-900 rounded-xl p-5 text-center">
+                    <div className={`text-3xl font-bold ${analyticsData.week_growth >= 0 ? "text-green-400" : "text-red-400"}`}>
+                      {analyticsData.week_growth >= 0 ? "↑" : "↓"}{Math.abs(analyticsData.week_growth)}%
                     </div>
-                  ))}
+                    <div className="text-gray-400 text-sm mt-1">週成長率</div>
+                    <div className="text-gray-600 text-xs mt-0.5">上週 {analyticsData.prev_week} 則</div>
+                  </div>
                 </div>
 
                 {/* 7 天趨勢圖 */}
@@ -1340,17 +1353,75 @@ export default function BotDetailPage() {
                   })()}
                 </div>
 
-                {/* 最近問題 */}
+                {/* ⏰ 峰值時段 */}
                 <div className="bg-gray-900 rounded-xl p-6">
-                  <h2 className="font-semibold mb-4">💬 最近被問的問題</h2>
+                  <h2 className="font-semibold mb-2">⏰ 峰值時段</h2>
+                  <p className="text-gray-500 text-xs mb-5">最近 7 天各時段對話量（台灣時間）</p>
+                  {(() => {
+                    const max = Math.max(...analyticsData.hourly_distribution.map((h) => h.count), 1);
+                    const peakHour = analyticsData.hourly_distribution.reduce((a, b) => a.count >= b.count ? a : b);
+                    return (
+                      <>
+                        {peakHour.count > 0 && (
+                          <div className="text-sm text-yellow-400 mb-4">
+                            🔥 尖峰時段：{peakHour.hour}:00 – {peakHour.hour + 1}:00（{peakHour.count} 則）
+                          </div>
+                        )}
+                        <div className="flex items-end gap-0.5 h-16">
+                          {analyticsData.hourly_distribution.map((h) => (
+                            <div key={h.hour} className="flex-1 flex flex-col items-center gap-0.5">
+                              <div
+                                className={`w-full rounded-t-sm transition-all ${h.count === peakHour.count && h.count > 0 ? "bg-yellow-500" : "bg-blue-800"}`}
+                                style={{ height: `${Math.max((h.count / max) * 52, h.count > 0 ? 3 : 1)}px`, opacity: h.count > 0 ? 1 : 0.3 }}
+                              />
+                              {h.hour % 6 === 0 && (
+                                <span className="text-xs text-gray-600">{h.hour}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex justify-between text-xs text-gray-600 mt-1 px-0.5">
+                          <span>0時</span><span>6時</span><span>12時</span><span>18時</span><span>23時</span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+
+                {/* 🔥 熱門問題排行 */}
+                <div className="bg-gray-900 rounded-xl p-6">
+                  <h2 className="font-semibold mb-1">🔥 熱門問題 TOP 10</h2>
+                  <p className="text-gray-500 text-xs mb-4">最常被問的問題，考慮加入關鍵字觸發或 FAQ</p>
+                  {analyticsData.top_questions.length === 0 ? (
+                    <p className="text-gray-500 text-sm">還沒有對話記錄</p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {analyticsData.top_questions.map((q, i) => (
+                        <div key={i} className="flex items-center gap-3 bg-gray-800 rounded-lg px-4 py-3">
+                          <span className={`text-sm font-bold shrink-0 w-5 text-center ${i === 0 ? "text-yellow-400" : i === 1 ? "text-gray-300" : i === 2 ? "text-orange-400" : "text-gray-600"}`}>
+                            {i + 1}
+                          </span>
+                          <span className="text-sm text-gray-300 flex-1 line-clamp-2">{q.question}</span>
+                          <span className={`text-xs font-semibold shrink-0 px-2 py-0.5 rounded-full ${q.count >= 3 ? "bg-red-900/50 text-red-400" : "bg-gray-700 text-gray-400"}`}>
+                            ×{q.count}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 💬 最近問題 */}
+                <div className="bg-gray-900 rounded-xl p-6">
+                  <h2 className="font-semibold mb-4">💬 最近對話</h2>
                   {analyticsData.recent_questions.length === 0 ? (
                     <p className="text-gray-500 text-sm">還沒有對話記錄</p>
                   ) : (
                     <div className="flex flex-col gap-2">
-                      {analyticsData.recent_questions.slice(0, 10).map((q, i) => (
+                      {analyticsData.recent_questions.map((q, i) => (
                         <div key={i} className="flex items-start gap-3 bg-gray-800 rounded-lg px-4 py-3">
-                          <span className="text-gray-500 text-sm shrink-0">{i + 1}.</span>
-                          <span className="text-sm text-gray-300 line-clamp-2">{q}</span>
+                          <span className="text-gray-600 text-sm shrink-0">{i + 1}.</span>
+                          <span className="text-sm text-gray-300">{q}</span>
                         </div>
                       ))}
                     </div>

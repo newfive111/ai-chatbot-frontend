@@ -1318,87 +1318,13 @@ export default function BotDetailPage() {
               </div>
             </div>
 
-            {/* 📸 Instagram DM 串接 */}
-            <div className="bg-gray-900 rounded-xl p-6">
+            {/* 📸 Instagram DM 串接 - 即將推出 */}
+            <div className="bg-gray-900 rounded-xl p-6 opacity-60">
               <div className="flex items-center justify-between mb-1">
                 <h2 className="font-semibold">📸 Instagram DM 串接</h2>
-                {instagramConfigured && (
-                  <span className="text-green-400 text-xs bg-green-900/40 border border-green-800 px-2 py-0.5 rounded-full">✅ 已設定</span>
-                )}
+                <span className="text-gray-500 text-xs bg-gray-800 border border-gray-700 px-2 py-0.5 rounded-full">🚧 即將推出</span>
               </div>
-              <p className="text-gray-400 text-sm mb-5">將 Bot 連接到你的 Instagram 商業帳號，自動回覆 DM。</p>
-
-              {/* 設定步驟 */}
-              <div className="bg-gray-800 rounded-xl p-4 mb-5">
-                <p className="text-sm font-medium text-gray-300 mb-3">📋 設定步驟</p>
-                <ol className="flex flex-col gap-3 text-sm text-gray-400">
-                  <li className="flex items-start gap-2">
-                    <span className="bg-pink-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">1</span>
-                    <span>前往 <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer" className="text-pink-400 hover:text-pink-300 underline">Meta for Developers</a> → 建立 App → 選「Business」類型</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="bg-pink-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">2</span>
-                    <span>App 中加入「Instagram」產品，連結你的 Instagram 商業帳號（需先連接 Facebook Page）</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="bg-pink-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">3</span>
-                    <span>「Tools」→「Graph API Explorer」→ 取得 <strong className="text-white">Page Access Token</strong>（需有 instagram_manage_messages 權限）</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="bg-pink-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">4</span>
-                    <span>設定 Webhook：填入下方的 Webhook URL 和 Verify Token，訂閱 <strong className="text-white">messages</strong> 欄位</span>
-                  </li>
-                </ol>
-              </div>
-
-              {/* Webhook URL */}
-              <div className="mb-4">
-                <label className="text-sm text-gray-400 mb-1.5 block">Webhook URL</label>
-                <div className="flex gap-2">
-                  <code className="flex-1 bg-gray-800 px-4 py-2.5 rounded-lg text-pink-400 text-xs font-mono overflow-x-auto">
-                    {`https://api.landehui.online/instagram/webhook/${id}`}
-                  </code>
-                  <button
-                    onClick={() => { navigator.clipboard.writeText(`https://api.landehui.online/instagram/webhook/${id}`); setMessage("✅ 已複製"); setTimeout(() => setMessage(""), 2000); }}
-                    className="shrink-0 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm transition"
-                  >複製</button>
-                </div>
-              </div>
-
-              {/* Verify Token */}
-              <div className="mb-5">
-                <label className="text-sm text-gray-400 mb-1.5 block">Verify Token（填到 Meta Webhook 設定）</label>
-                <div className="flex gap-2">
-                  <code className="flex-1 bg-gray-800 px-4 py-2.5 rounded-lg text-pink-400 text-xs font-mono overflow-x-auto">
-                    {id}
-                  </code>
-                  <button
-                    onClick={() => { navigator.clipboard.writeText(id as string); setMessage("✅ 已複製"); setTimeout(() => setMessage(""), 2000); }}
-                    className="shrink-0 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm transition"
-                  >複製</button>
-                </div>
-                <p className="text-gray-600 text-xs mt-1.5">在 Meta 的 Webhook 設定頁，把這串 Token 貼到「Verify Token」欄位</p>
-              </div>
-
-              {/* Page Access Token */}
-              <div className="mb-5">
-                <label className="text-sm text-gray-400 mb-1.5 block">Page Access Token</label>
-                <input
-                  type="password"
-                  placeholder={instagramConfigured ? "（已設定，重新輸入以更新）" : "貼上 Page Access Token..."}
-                  value={instagramPageToken}
-                  onChange={(e) => setInstagramPageToken(e.target.value)}
-                  className="w-full bg-gray-800 px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-pink-500 font-mono text-sm"
-                />
-              </div>
-
-              <button
-                onClick={saveInstagram}
-                disabled={savingInstagram || !instagramPageToken.trim()}
-                className="w-full bg-pink-600 hover:bg-pink-700 py-3 rounded-lg font-semibold transition disabled:opacity-50"
-              >
-                {savingInstagram ? "儲存中..." : "💾 儲存 Instagram 設定"}
-              </button>
+              <p className="text-gray-500 text-sm">將 Bot 連接到 Instagram 商業帳號，自動回覆 DM。功能開發中，敬請期待。</p>
             </div>
 
           </div>

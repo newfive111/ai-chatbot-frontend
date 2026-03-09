@@ -19,9 +19,18 @@ interface BotSettings {
   calendar_id?: string;
   slot_duration_minutes?: number;
   business_hours?: { start: string; end: string; weekdays: number[] };
+  keyword_triggers?: { keyword: string; reply: string }[];
 }
 
-const API = "https://graceful-patience-production-0170.up.railway.app";
+interface AnalyticsData {
+  total: number;
+  today: number;
+  this_week: number;
+  daily_counts: { date: string; count: number }[];
+  recent_questions: string[];
+}
+
+const API = process.env.NEXT_PUBLIC_API_URL || "https://graceful-patience-production-0170.up.railway.app";
 
 const PROMPT_PRESETS = [
   { key: "customer_service", label: "👩‍💼 親切客服", desc: "耐心解答、親切有禮", prompt: "你是「{bot_name}」的客服人員，負責解答客戶問題、處理服務需求，保持親切耐心的態度。" },
@@ -35,7 +44,17 @@ export default function BotDetailPage() {
   const router = useRouter();
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
-  const [tab, setTab] = useState<"knowledge" | "persona" | "chat" | "embed" | "settings" | "assistant">("knowledge");
+  const [tab, setTab] = useState<"knowledge" | "persona" | "chat" | "embed" | "settings" | "assistant" | "analytics">("knowledge");
+
+  // 關鍵字觸發
+  const [keywordTriggers, setKeywordTriggers] = useState<{ keyword: string; reply: string }[]>([]);
+  const [newKeyword, setNewKeyword] = useState("");
+  const [newKeywordReply, setNewKeywordReply] = useState("");
+  const [savingKeywords, setSavingKeywords] = useState(false);
+
+  // Analytics
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [faqText, setFaqText] = useState("");
   const [question, setQuestion] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -117,6 +136,7 @@ export default function BotDetailPage() {
       setBusinessStart(data.business_hours?.start || "09:00");
       setBusinessEnd(data.business_hours?.end || "18:00");
       setWorkWeekdays(data.business_hours?.weekdays || [1,2,3,4,5]);
+      setKeywordTriggers(data.keyword_triggers || []);
     } catch (err: any) {
       console.error("[BotDetail] 載入 Bot 設定失敗", err?.response?.status, err?.message);
       setMessage("⚠️ 載入設定失敗，請重新整理頁面");
@@ -158,6 +178,7 @@ export default function BotDetailPage() {
 
   useEffect(() => {
     if (tab === "knowledge") fetchChunks();
+    if (tab === "analytics") fetchAnalytics();
   }, [tab]);
 
   const deleteChunk = async (chunkId: string) => {
@@ -332,6 +353,19 @@ export default function BotDetailPage() {
     setTimeout(() => setMessage(""), 3000);
   };
 
+  // ── Analytics：載入數據 ──
+  const fetchAnalytics = async () => {
+    if (!id) return;
+    setAnalyticsLoading(true);
+    try {
+      const res = await axios.get(`${API}/bots/${id}/analytics`, { headers });
+      setAnalyticsData(res.data);
+    } catch (err) {
+      console.error("Analytics fetch failed", err);
+    }
+    setAnalyticsLoading(false);
+  };
+
   // ── Settings：儲存 Sheet ──
   const saveSheet = async () => {
     setSavingSheet(true);
@@ -341,6 +375,15 @@ export default function BotDetailPage() {
     }, { headers });
     setMessage("✅ Google Sheet 設定已儲存");
     setSavingSheet(false);
+    setTimeout(() => setMessage(""), 3000);
+  };
+
+  // ── Settings：儲存關鍵字觸發 ──
+  const saveKeywordTriggers = async () => {
+    setSavingKeywords(true);
+    await axios.patch(`${API}/bots/${id}`, { keyword_triggers: keywordTriggers }, { headers });
+    setMessage("✅ 關鍵字設定已儲存");
+    setSavingKeywords(false);
     setTimeout(() => setMessage(""), 3000);
   };
 
@@ -410,17 +453,19 @@ export default function BotDetailPage() {
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6 border-b border-gray-800 overflow-x-auto">
-          {(["knowledge", "persona", "chat", "embed", "settings", "assistant"] as const).map((t) => (
+          {(["knowledge", "persona", "chat", "embed", "settings", "analytics", "assistant"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={`shrink-0 px-4 py-2 text-sm font-medium transition border-b-2 -mb-px ${
                 tab === t
-                  ? t === "assistant" ? "border-purple-500 text-white" : "border-blue-500 text-white"
+                  ? t === "assistant" ? "border-purple-500 text-white"
+                  : t === "analytics" ? "border-yellow-500 text-white"
+                  : "border-blue-500 text-white"
                   : "border-transparent text-gray-500 hover:text-white"
               }`}
             >
-              {{ knowledge: "📚 知識庫", persona: "🤖 角色", chat: "💬 測試對話", embed: "🔗 嵌入代碼", settings: "⚙️ 設定", assistant: "✨ AI 助手" }[t]}
+              {{ knowledge: "📚 知識庫", persona: "🤖 角色", chat: "💬 測試對話", embed: "🔗 嵌入代碼", settings: "⚙️ 設定", analytics: "📊 數據", assistant: "✨ AI 助手" }[t]}
             </button>
           ))}
         </div>
@@ -1077,6 +1122,77 @@ export default function BotDetailPage() {
               </button>
             </div>
 
+            {/* ⚡ 關鍵字觸發 */}
+            <div className="bg-gray-900 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="font-semibold">⚡ 關鍵字觸發</h2>
+                {keywordTriggers.length > 0 && (
+                  <span className="text-yellow-400 text-xs bg-yellow-900/30 border border-yellow-800 px-2 py-0.5 rounded-full">{keywordTriggers.length} 筆</span>
+                )}
+              </div>
+              <p className="text-gray-400 text-sm mb-5">
+                輸入特定關鍵字時，直接回覆固定答案，<strong className="text-white">不消耗 AI token</strong>，速度更快。
+              </p>
+
+              {/* 已設定列表 */}
+              <div className="flex flex-col gap-2 mb-4">
+                {keywordTriggers.length === 0 && (
+                  <p className="text-gray-500 text-sm">尚未設定關鍵字</p>
+                )}
+                {keywordTriggers.map((kt, i) => (
+                  <div key={i} className="flex items-start gap-3 bg-gray-800 rounded-lg px-4 py-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-yellow-400 mb-0.5">🔑 {kt.keyword}</div>
+                      <div className="text-sm text-gray-300 truncate">↩ {kt.reply}</div>
+                    </div>
+                    <button
+                      onClick={() => setKeywordTriggers((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="text-gray-500 hover:text-red-400 transition text-lg leading-none shrink-0"
+                    >×</button>
+                  </div>
+                ))}
+              </div>
+
+              {/* 新增表單 */}
+              <div className="flex flex-col gap-2 mb-4">
+                <input
+                  type="text"
+                  placeholder="關鍵字（例如：退款、營業時間）"
+                  value={newKeyword}
+                  onChange={(e) => setNewKeyword(e.target.value)}
+                  className="w-full bg-gray-800 px-4 py-2.5 rounded-lg outline-none focus:ring-2 focus:ring-yellow-500 text-sm"
+                />
+                <textarea
+                  placeholder="固定回覆內容..."
+                  value={newKeywordReply}
+                  onChange={(e) => setNewKeywordReply(e.target.value)}
+                  rows={2}
+                  className="w-full bg-gray-800 px-4 py-2.5 rounded-lg outline-none focus:ring-2 focus:ring-yellow-500 text-sm resize-none"
+                />
+                <button
+                  onClick={() => {
+                    if (newKeyword.trim() && newKeywordReply.trim()) {
+                      setKeywordTriggers((prev) => [...prev, { keyword: newKeyword.trim(), reply: newKeywordReply.trim() }]);
+                      setNewKeyword("");
+                      setNewKeywordReply("");
+                    }
+                  }}
+                  disabled={!newKeyword.trim() || !newKeywordReply.trim()}
+                  className="bg-gray-700 hover:bg-gray-600 py-2 rounded-lg text-sm transition disabled:opacity-40"
+                >
+                  + 新增關鍵字
+                </button>
+              </div>
+
+              <button
+                onClick={saveKeywordTriggers}
+                disabled={savingKeywords}
+                className="w-full bg-yellow-600 hover:bg-yellow-700 py-3 rounded-lg font-semibold transition disabled:opacity-50"
+              >
+                {savingKeywords ? "儲存中..." : "💾 儲存關鍵字設定"}
+              </button>
+            </div>
+
           </div>
         )}
 
@@ -1181,6 +1297,79 @@ export default function BotDetailPage() {
             </div>
           </div>
         )}
+        {/* ── 數據 Tab ── */}
+        {tab === "analytics" && (
+          <div className="flex flex-col gap-6">
+            {analyticsLoading ? (
+              <div className="text-center text-gray-500 py-20">載入中...</div>
+            ) : analyticsData ? (
+              <>
+                {/* 3 個統計卡片 */}
+                <div className="grid grid-cols-3 gap-4">
+                  {[
+                    { label: "總對話數", value: analyticsData.total, color: "text-blue-400" },
+                    { label: "今日", value: analyticsData.today, color: "text-green-400" },
+                    { label: "本週", value: analyticsData.this_week, color: "text-yellow-400" },
+                  ].map((stat) => (
+                    <div key={stat.label} className="bg-gray-900 rounded-xl p-5 text-center">
+                      <div className={`text-3xl font-bold ${stat.color}`}>{stat.value}</div>
+                      <div className="text-gray-400 text-sm mt-1">{stat.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 7 天趨勢圖 */}
+                <div className="bg-gray-900 rounded-xl p-6">
+                  <h2 className="font-semibold mb-5">📈 最近 7 天對話量</h2>
+                  {(() => {
+                    const max = Math.max(...analyticsData.daily_counts.map((d) => d.count), 1);
+                    return (
+                      <div className="flex items-end gap-2 h-32">
+                        {analyticsData.daily_counts.map((d, i) => (
+                          <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                            <span className="text-xs text-gray-500">{d.count > 0 ? d.count : ""}</span>
+                            <div
+                              className="w-full rounded-t-sm bg-blue-600 transition-all"
+                              style={{ height: `${Math.max((d.count / max) * 96, d.count > 0 ? 4 : 2)}px`, opacity: d.count > 0 ? 1 : 0.2 }}
+                            />
+                            <span className="text-xs text-gray-500">{d.date.slice(5)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* 最近問題 */}
+                <div className="bg-gray-900 rounded-xl p-6">
+                  <h2 className="font-semibold mb-4">💬 最近被問的問題</h2>
+                  {analyticsData.recent_questions.length === 0 ? (
+                    <p className="text-gray-500 text-sm">還沒有對話記錄</p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {analyticsData.recent_questions.slice(0, 10).map((q, i) => (
+                        <div key={i} className="flex items-start gap-3 bg-gray-800 rounded-lg px-4 py-3">
+                          <span className="text-gray-500 text-sm shrink-0">{i + 1}.</span>
+                          <span className="text-sm text-gray-300 line-clamp-2">{q}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={fetchAnalytics}
+                  className="w-full bg-gray-800 hover:bg-gray-700 py-3 rounded-lg text-sm text-gray-400 transition"
+                >
+                  🔄 重新載入
+                </button>
+              </>
+            ) : (
+              <div className="text-center text-gray-500 py-20">載入失敗，請重試</div>
+            )}
+          </div>
+        )}
+
         {/* ── AI 助手 Tab ── */}
         {tab === "assistant" && (
           <div className="flex flex-col gap-4">

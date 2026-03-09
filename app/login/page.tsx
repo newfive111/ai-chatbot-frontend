@@ -15,7 +15,8 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.post("https://graceful-patience-production-0170.up.railway.app/auth/login", { email, password });
+      const API = process.env.NEXT_PUBLIC_API_URL || "https://graceful-patience-production-0170.up.railway.app";
+      const res = await axios.post(`${API}/auth/login`, { email, password });
       localStorage.setItem("token", res.data.token);
       router.push("/dashboard");
     } catch {
@@ -56,6 +57,9 @@ export default function LoginPage() {
           </button>
         </form>
         <p className="mt-4 text-gray-400 text-sm text-center">
+          <a href="/forgot-password" className="text-gray-500 hover:text-gray-300 transition">忘記密碼？</a>
+        </p>
+        <p className="mt-2 text-gray-400 text-sm text-center">
           沒有帳號？<a href="/register" className="text-blue-400 hover:underline">免費註冊</a>
         </p>
       </div>

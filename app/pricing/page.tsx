@@ -29,8 +29,8 @@ export default function PricingPage() {
     },
     {
       name: "專業",
-      monthly: 599,
-      yearly: 4990,
+      monthly: 1290,
+      yearly: 10790,
       period: "/月",
       desc: "成長中的企業首選",
       color: "border-blue-500",
@@ -51,8 +51,8 @@ export default function PricingPage() {
     },
     {
       name: "商業",
-      monthly: 1490,
-      yearly: 12490,
+      monthly: 3490,
+      yearly: 29290,
       period: "/月",
       desc: "大型企業、代理商",
       color: "border-purple-500",

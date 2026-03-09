@@ -13,12 +13,22 @@ export default function ResetPasswordPage() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // Supabase 把 token 放在 URL hash，監聽 session 變化確認有效
-    supabase.auth.onAuthStateChange((event) => {
+    // 方法一：PKCE flow → URL 有 ?code= 參數，手動 exchange
+    const code = new URLSearchParams(window.location.search).get("code");
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (!error) setReady(true);
+      });
+    }
+
+    // 方法二：Implicit flow → hash 有 #access_token，監聽 event
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         setReady(true);
       }
     });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleReset = async (e: React.FormEvent) => {

@@ -8,7 +8,13 @@
     return;
   }
 
-  var sessionId = 'widget_' + Math.random().toString(36).slice(2);
+  // sessionId 存 localStorage，讓同一個客人重整頁面後繼續同一段對話
+  var lsKey = 'lr_session_' + botId;
+  var sessionId = localStorage.getItem(lsKey);
+  if (!sessionId) {
+    sessionId = 'widget_' + Math.random().toString(36).slice(2);
+    localStorage.setItem(lsKey, sessionId);
+  }
   var isOpen = false;
   var isLoading = false;
   var welcomeShown = false;

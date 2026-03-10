@@ -209,6 +209,18 @@ export default function BotDetailPage() {
     if (tab === "analytics") fetchAnalytics();
   }, [tab]);
 
+  // ── 未儲存變更警告 ──
+  const [isDirty, setIsDirty] = useState(false);
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
   const deleteChunk = async (chunkId: string) => {
     await axios.delete(`${API}/bots/${id}/knowledge/${chunkId}`, { headers });
     setChunks((prev) => prev.filter((c) => c.id !== chunkId));
@@ -328,6 +340,7 @@ export default function BotDetailPage() {
     setMessage("✅ API Key 已儲存");
     setApiKey("");
     setSavingKey(false);
+    setIsDirty(false);
     setTimeout(() => setMessage(""), 3000);
   };
 
@@ -337,6 +350,7 @@ export default function BotDetailPage() {
     await axios.patch(`${API}/bots/${id}`, { system_prompt: systemPrompt }, { headers });
     setMessage("✅ 角色設定已儲存");
     setSavingPrompt(false);
+    setIsDirty(false);
     setTimeout(() => setMessage(""), 3000);
   };
 
@@ -350,6 +364,7 @@ export default function BotDetailPage() {
     setBotSettings((prev) => prev ? { ...prev, welcome_message: welcomeMessage } : prev);
     setMessage("✅ 引導設定已儲存");
     setSavingGuide(false);
+    setIsDirty(false);
     setTimeout(() => setMessage(""), 3000);
   };
 
@@ -724,7 +739,7 @@ export default function BotDetailPage() {
                 </div>
                 <textarea
                   value={systemPrompt}
-                  onChange={(e) => setSystemPrompt(e.target.value)}
+                  onChange={(e) => { setSystemPrompt(e.target.value); setIsDirty(true); }}
                   placeholder={`例如：你是「${botSettings?.name || "Bot"}」的業務專員，說話風格積極有親和力...`}
                   rows={5}
                   className="w-full bg-gray-800 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm"
@@ -774,7 +789,7 @@ export default function BotDetailPage() {
                 <label className="text-sm text-gray-400 mb-1.5 block">歡迎訊息</label>
                 <textarea
                   value={welcomeMessage}
-                  onChange={(e) => setWelcomeMessage(e.target.value)}
+                  onChange={(e) => { setWelcomeMessage(e.target.value); setIsDirty(true); }}
                   placeholder={`您好！歡迎來到 ${botSettings?.name || "Bot"} 客服 😊\n請問您需要哪方面的協助？`}
                   rows={3}
                   className="w-full bg-gray-800 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm"
@@ -962,7 +977,7 @@ export default function BotDetailPage() {
                   type="password"
                   placeholder="AIzaSy..."
                   value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
+                  onChange={(e) => { setApiKey(e.target.value); setIsDirty(true); }}
                   className="flex-1 bg-gray-800 px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                 />
                 <button

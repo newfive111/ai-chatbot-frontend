@@ -49,7 +49,10 @@ export default function BotDetailPage() {
   const router = useRouter();
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
-  const [tab, setTab] = useState<"knowledge" | "persona" | "chat" | "embed" | "settings" | "assistant" | "analytics">("knowledge");
+  const [tab, setTab] = useState<"knowledge" | "persona" | "chat" | "embed" | "settings" | "analytics">("knowledge");
+
+  // AI 助手 floating widget
+  const [assistantOpen, setAssistantOpen] = useState(false);
 
   // 關鍵字觸發
   const [keywordTriggers, setKeywordTriggers] = useState<{ keyword: string; reply: string }[]>([]);
@@ -186,15 +189,19 @@ export default function BotDetailPage() {
     assistantBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [assistantMsgs]);
 
-  // ── 切換回 chat / assistant tab 時捲到底部 ──
+  // ── 切換回 chat tab 時捲到底部 ──
   useEffect(() => {
     if (tab === "chat") {
       setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: "instant" }), 50);
     }
-    if (tab === "assistant") {
-      setTimeout(() => assistantBottomRef.current?.scrollIntoView({ behavior: "instant" }), 50);
-    }
   }, [tab]);
+
+  // ── AI 助手 widget 開啟時捲到底部 ──
+  useEffect(() => {
+    if (assistantOpen) {
+      setTimeout(() => assistantBottomRef.current?.scrollIntoView({ behavior: "instant" }), 100);
+    }
+  }, [assistantOpen]);
 
   // ── 知識庫 ──
   const fetchChunks = async () => {
@@ -554,19 +561,18 @@ export default function BotDetailPage() {
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6 border-b border-gray-800 overflow-x-auto">
-          {(["knowledge", "persona", "chat", "embed", "settings", "analytics", "assistant"] as const).map((t) => (
+          {(["knowledge", "persona", "chat", "embed", "settings", "analytics"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={`shrink-0 px-4 py-2 text-sm font-medium transition border-b-2 -mb-px ${
                 tab === t
-                  ? t === "assistant" ? "border-purple-500 text-white"
-                  : t === "analytics" ? "border-yellow-500 text-white"
+                  ? t === "analytics" ? "border-yellow-500 text-white"
                   : "border-blue-500 text-white"
                   : "border-transparent text-gray-500 hover:text-white"
               }`}
             >
-              {{ knowledge: "📚 知識庫", persona: "🤖 角色", chat: "💬 測試對話", embed: "🔗 嵌入代碼", settings: "⚙️ 設定", analytics: "📊 數據", assistant: "✨ AI 助手" }[t]}
+              {{ knowledge: "📚 知識庫", persona: "🤖 角色", chat: "💬 測試對話", embed: "🔗 嵌入代碼", settings: "⚙️ 設定", analytics: "📊 數據" }[t]}
             </button>
           ))}
         </div>
@@ -1575,107 +1581,137 @@ export default function BotDetailPage() {
           </div>
         )}
 
-        {/* ── AI 助手 Tab ── */}
-        {tab === "assistant" && (
-          <div className="flex flex-col gap-4">
-            {/* 說明卡 */}
-            <div className="bg-purple-900/20 border border-purple-800/40 rounded-xl px-4 py-3">
-              <p className="text-sm text-purple-300 leading-relaxed">
-                ✨ <strong>設定助手「小懶」</strong> 使用 AI 幫你直接操作 Bot 設定。告訴它你的需求，它會幫你寫角色描述、設定收集欄位、更新歡迎訊息等。
-              </p>
-              <p className="text-xs text-purple-400/70 mt-1.5">
-                ⚠️ 需先設定 Gemini API Key（設定頁面）才能使用。設定變更會即時套用。
-              </p>
+      </div>
+    </main>
+
+    {/* ── AI 助手 Floating Widget ── */}
+    <>
+      {/* 觸發按鈕 */}
+      <button
+        onClick={() => setAssistantOpen((o) => !o)}
+        className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-full shadow-2xl font-semibold text-sm transition-all duration-200 ${
+          assistantOpen
+            ? "bg-purple-700 hover:bg-purple-800 text-white"
+            : "bg-purple-600 hover:bg-purple-700 text-white"
+        }`}
+        title="AI 設定助手「小懶」"
+      >
+        <span className="text-base">{assistantOpen ? "✕" : "✨"}</span>
+        {!assistantOpen && <span>小懶</span>}
+      </button>
+
+      {/* 側邊 Panel */}
+      <div
+        className={`fixed bottom-0 right-0 z-40 flex flex-col bg-gray-900 border-l border-t border-gray-800 shadow-2xl transition-all duration-300 ease-in-out ${
+          assistantOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0 pointer-events-none"
+        }`}
+        style={{ width: "360px", height: "calc(100vh - 0px)", top: 0 }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 shrink-0">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-purple-400 text-base">✨</span>
+              <h2 className="font-semibold text-white">AI 設定助手「小懶」</h2>
             </div>
+            <p className="text-xs text-gray-500 mt-0.5">說需求，我幫你設定 Bot</p>
+          </div>
+          <div className="flex gap-2 items-center">
+            <button
+              onClick={() => {
+                setAssistantMsgs([
+                  { role: "assistant", content: "👋 你好！我是設定助手「小懶」。\n\n告訴我你想要什麼樣的機器人，我來幫你設定！" }
+                ]);
+                assistantSessionId.current = `assistant_${id}_${Date.now()}`;
+              }}
+              className="text-xs text-gray-500 hover:text-white transition px-2.5 py-1 bg-gray-800 hover:bg-gray-700 rounded-lg"
+              title="重置對話"
+            >
+              🔄
+            </button>
+            <button
+              onClick={() => setAssistantOpen(false)}
+              className="text-gray-500 hover:text-white transition text-xl leading-none"
+            >
+              ×
+            </button>
+          </div>
+        </div>
 
-            {/* 快速啟動建議 */}
-            {assistantMsgs.length <= 1 && (
-              <div className="flex flex-wrap gap-2">
-                {[
-                  "幫我設定角色描述",
-                  "設定要收集的客戶資料",
-                  "幫我寫歡迎訊息",
-                  "查看目前設定",
-                ].map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    onClick={() => sendAssistantMsg(suggestion)}
-                    className="px-3 py-1.5 text-xs bg-purple-900/40 border border-purple-800/50 hover:bg-purple-800/50 text-purple-300 rounded-full transition"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* 聊天介面 */}
-            <div className="bg-gray-900 rounded-xl flex flex-col" style={{ height: "540px" }}>
-              <div className="flex justify-between items-center px-5 py-4 border-b border-gray-800">
-                <div>
-                  <h2 className="font-semibold">✨ AI 設定助手</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">對話完成後，設定會即時套用到你的 Bot</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setAssistantMsgs([
-                      { role: "assistant", content: "👋 你好！我是設定助手「小懶」。\n\n告訴我你想要什麼樣的機器人，我來幫你設定！" }
-                    ]);
-                    assistantSessionId.current = `assistant_${id}_${Date.now()}`;
-                  }}
-                  className="text-xs text-gray-400 hover:text-white transition px-3 py-1 bg-gray-800 rounded-lg"
-                >
-                  🔄 重置對話
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
-                {assistantMsgs.map((msg, i) => (
-                  <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-                      msg.role === "user"
-                        ? "bg-blue-600 text-white rounded-br-sm"
-                        : "bg-purple-900/40 border border-purple-800/40 text-gray-100 rounded-bl-sm"
-                    }`}>
-                      {msg.content}
-                    </div>
-                  </div>
-                ))}
-                {assistantLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-purple-900/40 border border-purple-800/40 text-purple-300 px-4 py-3 rounded-2xl rounded-bl-sm text-sm flex items-center gap-2">
-                      <span className="animate-pulse">●</span>
-                      <span className="animate-pulse" style={{ animationDelay: "0.2s" }}>●</span>
-                      <span className="animate-pulse" style={{ animationDelay: "0.4s" }}>●</span>
-                    </div>
-                  </div>
-                )}
-                <div ref={assistantBottomRef} />
-              </div>
-
-              <form
-                onSubmit={(e) => { e.preventDefault(); sendAssistantMsg(assistantInput); }}
-                className="flex gap-2 px-4 py-4 border-t border-gray-800"
+        {/* 快速建議（對話剛開始時） */}
+        {assistantMsgs.length <= 1 && (
+          <div className="px-4 pt-3 pb-1 flex flex-wrap gap-1.5 shrink-0">
+            {["幫我設定角色描述", "設定收集欄位", "幫我寫歡迎訊息", "查看目前設定"].map((s) => (
+              <button
+                key={s}
+                onClick={() => sendAssistantMsg(s)}
+                className="px-2.5 py-1 text-xs bg-purple-900/50 border border-purple-800/50 hover:bg-purple-800/60 text-purple-300 rounded-full transition"
               >
-                <input
-                  type="text"
-                  placeholder="例：幫我設定一個賣保險的機器人，要收集姓名和電話..."
-                  value={assistantInput}
-                  onChange={(e) => setAssistantInput(e.target.value)}
-                  className="flex-1 bg-gray-800 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                />
-                <button
-                  type="submit"
-                  disabled={assistantLoading || !assistantInput.trim()}
-                  className="bg-purple-600 hover:bg-purple-700 px-5 py-3 rounded-xl font-semibold transition disabled:opacity-50 text-sm"
-                >
-                  送出
-                </button>
-              </form>
-            </div>
+                {s}
+              </button>
+            ))}
           </div>
         )}
 
+        {/* 訊息列表 */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
+          {assistantMsgs.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+                msg.role === "user"
+                  ? "bg-blue-600 text-white rounded-br-sm"
+                  : "bg-gray-800 border border-gray-700 text-gray-100 rounded-bl-sm"
+              }`}>
+                {msg.content}
+              </div>
+            </div>
+          ))}
+          {assistantLoading && (
+            <div className="flex justify-start">
+              <div className="bg-gray-800 border border-gray-700 text-purple-400 px-3.5 py-2.5 rounded-2xl rounded-bl-sm text-sm flex items-center gap-1.5">
+                <span className="animate-pulse">●</span>
+                <span className="animate-pulse" style={{ animationDelay: "0.15s" }}>●</span>
+                <span className="animate-pulse" style={{ animationDelay: "0.3s" }}>●</span>
+              </div>
+            </div>
+          )}
+          <div ref={assistantBottomRef} />
+        </div>
+
+        {/* 輸入框 */}
+        <form
+          onSubmit={(e) => { e.preventDefault(); sendAssistantMsg(assistantInput); }}
+          className="flex gap-2 px-4 py-4 border-t border-gray-800 shrink-0"
+        >
+          <input
+            type="text"
+            placeholder="輸入需求..."
+            value={assistantInput}
+            onChange={(e) => setAssistantInput(e.target.value)}
+            className="flex-1 bg-gray-800 px-3.5 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+          />
+          <button
+            type="submit"
+            disabled={assistantLoading || !assistantInput.trim()}
+            className="bg-purple-600 hover:bg-purple-700 px-4 py-2.5 rounded-xl font-semibold transition disabled:opacity-50 text-sm"
+          >
+            送
+          </button>
+        </form>
+
+        {/* Footer 提示 */}
+        <p className="text-xs text-gray-600 text-center pb-3 shrink-0">
+          ⚠️ 需先在「⚙️ 設定」填入 Gemini API Key
+        </p>
       </div>
-    </main>
+
+      {/* 背景遮罩（手機版） */}
+      {assistantOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          onClick={() => setAssistantOpen(false)}
+        />
+      )}
+    </>
   );
 }

@@ -186,6 +186,16 @@ export default function BotDetailPage() {
     assistantBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [assistantMsgs]);
 
+  // ── 切換回 chat / assistant tab 時捲到底部 ──
+  useEffect(() => {
+    if (tab === "chat") {
+      setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: "instant" }), 50);
+    }
+    if (tab === "assistant") {
+      setTimeout(() => assistantBottomRef.current?.scrollIntoView({ behavior: "instant" }), 50);
+    }
+  }, [tab]);
+
   // ── 知識庫 ──
   const fetchChunks = async () => {
     setLoadingChunks(true);

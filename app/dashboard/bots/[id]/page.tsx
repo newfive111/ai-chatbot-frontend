@@ -20,6 +20,7 @@ interface BotSettings {
   slot_duration_minutes?: number;
   business_hours?: { start: string; end: string; weekdays: number[] };
   keyword_triggers?: { keyword: string; reply: string }[];
+  debounce_seconds?: number;
 }
 
 interface AnalyticsData {
@@ -89,6 +90,8 @@ export default function BotDetailPage() {
   const [lineConfigured, setLineConfigured] = useState(false);
 
   // Instagram
+  const [debounceSeconds, setDebounceSeconds] = useState(15);
+  const [savingDebounce, setSavingDebounce] = useState(false);
   const [instagramPageToken, setInstagramPageToken] = useState("");
   const [savingInstagram, setSavingInstagram] = useState(false);
   const [instagramConfigured, setInstagramConfigured] = useState(false);
@@ -146,6 +149,7 @@ export default function BotDetailPage() {
       setBusinessEnd(data.business_hours?.end || "18:00");
       setWorkWeekdays(data.business_hours?.weekdays || [1,2,3,4,5]);
       setKeywordTriggers(data.keyword_triggers || []);
+      setDebounceSeconds(data.debounce_seconds ?? 15);
       setInstagramConfigured(!!data.instagram_page_token);
     } catch (err: any) {
       console.error("[BotDetail] 載入 Bot 設定失敗", err?.response?.status, err?.message);
@@ -360,6 +364,15 @@ export default function BotDetailPage() {
     setLineToken("");
     setMessage("✅ LINE 設定已儲存");
     setSavingLine(false);
+    setTimeout(() => setMessage(""), 3000);
+  };
+
+  // ── Settings：儲存防抖秒數 ──
+  const saveDebounce = async () => {
+    setSavingDebounce(true);
+    await axios.patch(`${API}/bots/${id}`, { debounce_seconds: debounceSeconds }, { headers });
+    setMessage("✅ 防抖設定已儲存");
+    setSavingDebounce(false);
     setTimeout(() => setMessage(""), 3000);
   };
 
@@ -1316,6 +1329,33 @@ export default function BotDetailPage() {
                   </button>
                 </div>
               </div>
+            </div>
+
+            {/* ⏱ 防抖設定 */}
+            <div className="bg-gray-900 rounded-xl p-6">
+              <h2 className="font-semibold mb-1">⏱ LINE 防抖時間</h2>
+              <p className="text-gray-400 text-sm mb-5">
+                用戶連續傳訊息時，等待幾秒後才合併回覆。設太短容易重複回應，設太長用戶等太久。建議 10-20 秒。
+              </p>
+              <div className="flex items-center gap-4 mb-4">
+                <input
+                  type="range"
+                  min={3}
+                  max={60}
+                  step={1}
+                  value={debounceSeconds}
+                  onChange={(e) => setDebounceSeconds(Number(e.target.value))}
+                  className="flex-1 accent-blue-500"
+                />
+                <span className="text-white font-bold text-lg w-16 text-right">{debounceSeconds} 秒</span>
+              </div>
+              <button
+                onClick={saveDebounce}
+                disabled={savingDebounce}
+                className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition disabled:opacity-50"
+              >
+                {savingDebounce ? "儲存中..." : "💾 儲存防抖設定"}
+              </button>
             </div>
 
             {/* 📸 Instagram DM 串接 - 即將推出 */}

@@ -205,9 +205,11 @@
       var data = await res.json();
       removeTyping();
       addMsg(data.answer || '⚠️ 無法取得回應', 'bot');
+      renderQRs();
     } catch (e) {
       removeTyping();
       addMsg('⚠️ 發生錯誤，請稍後再試', 'bot');
+      renderQRs();
     }
 
     isLoading = false; sendBtn.disabled = false;
@@ -224,7 +226,11 @@
         welcomeShown = true;
         if (welcomeMessage) {
           setTimeout(function () { addMsg(welcomeMessage, 'bot'); renderQRs(); }, 200);
+        } else {
+          setTimeout(function () { renderQRs(); }, 200);
         }
+      } else {
+        renderQRs();
       }
       setTimeout(function () { inputEl.focus(); }, 300);
     } else {

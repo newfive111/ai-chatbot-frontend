@@ -76,6 +76,9 @@ export default function BotDetailPage() {
 
   // Settings state
   const [botSettings, setBotSettings] = useState<BotSettings | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [botName, setBotName] = useState("");
+  const [savingName, setSavingName] = useState(false);
   const [apiKey, setApiKey] = useState("");
   const [savingKey, setSavingKey] = useState(false);
   const [sheetId, setSheetId] = useState("");
@@ -137,6 +140,7 @@ export default function BotDetailPage() {
       const res = await axios.get(`${API}/bots/${id}`, { headers });
       const data: any = res.data;
       setBotSettings(data);
+      setBotName(data.name || "");
       setSheetId(data.sheet_id || "");
       setCollectFields(data.collect_fields || []);
       setSystemPrompt(data.system_prompt || "");
@@ -352,6 +356,18 @@ export default function BotDetailPage() {
     setTimeout(() => setMessage(""), 3000);
   };
 
+  // ── 儲存 Bot 名稱 ──
+  const saveBotName = async () => {
+    if (!botName.trim()) return;
+    setSavingName(true);
+    await axios.patch(`${API}/bots/${id}`, { name: botName.trim() }, { headers });
+    setBotSettings((prev) => prev ? { ...prev, name: botName.trim() } : prev);
+    setEditingName(false);
+    setSavingName(false);
+    setMessage("✅ Bot 名稱已更新");
+    setTimeout(() => setMessage(""), 3000);
+  };
+
   // ── Settings：儲存 LINE 憑證 ──
   const saveLineConfig = async () => {
     setSavingLine(true);
@@ -446,7 +462,32 @@ export default function BotDetailPage() {
         <button onClick={() => router.push("/dashboard")} className="text-gray-400 hover:text-white mb-6 text-sm">
           ← 返回
         </button>
-        <h1 className="text-2xl font-bold mb-4">Bot 設定</h1>
+        <div className="flex items-center gap-3 mb-4">
+          {editingName ? (
+            <>
+              <input
+                autoFocus
+                value={botName}
+                onChange={(e) => setBotName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") saveBotName(); if (e.key === "Escape") setEditingName(false); }}
+                className="text-2xl font-bold bg-gray-800 px-3 py-1 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 flex-1"
+              />
+              <button onClick={saveBotName} disabled={savingName} className="text-sm bg-blue-600 hover:bg-blue-700 px-4 py-1.5 rounded-lg transition disabled:opacity-50">
+                {savingName ? "儲存中..." : "儲存"}
+              </button>
+              <button onClick={() => { setEditingName(false); setBotName(botSettings?.name || ""); }} className="text-sm text-gray-400 hover:text-white px-3 py-1.5 rounded-lg transition">
+                取消
+              </button>
+            </>
+          ) : (
+            <>
+              <h1 className="text-2xl font-bold">{botSettings?.name || "Bot 設定"}</h1>
+              <button onClick={() => setEditingName(true)} className="text-gray-500 hover:text-white transition text-sm">
+                ✏️
+              </button>
+            </>
+          )}
+        </div>
 
         {/* ── 新手引導進度清單 ── */}
         {!allDone && (

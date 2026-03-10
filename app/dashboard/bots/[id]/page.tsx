@@ -489,6 +489,7 @@ export default function BotDetailPage() {
   const lineWebhookUrl = `https://graceful-patience-production-0170.up.railway.app/line/webhook/${id}`;
 
   return (
+    <>
     <main className="min-h-screen bg-gray-950 text-white px-4 py-8">
       <div className="max-w-3xl mx-auto">
         <button onClick={() => router.push("/dashboard")} className="text-gray-400 hover:text-white mb-6 text-sm">
@@ -1712,6 +1713,7 @@ export default function BotDetailPage() {
           onClick={() => setAssistantOpen(false)}
         />
       )}
+    </>
     </>
   );
 }

@@ -1,21 +1,26 @@
 "use client";
+export const dynamic = "force-dynamic";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+const API = process.env.NEXT_PUBLIC_API_URL || "https://graceful-patience-production-0170.up.railway.app";
 
 export default function PricingPage() {
   const [annual, setAnnual] = useState(false);
+  const [loading, setLoading] = useState<string | null>(null);
+  const router = useRouter();
 
   const plans = [
     {
+      key: "free",
       name: "免費",
       monthly: 0,
       yearly: 0,
-      period: "/永久",
       desc: "個人試用、小型測試",
       color: "border-gray-700",
       badge: null,
       cta: "免費開始",
       ctaStyle: "bg-gray-700 hover:bg-gray-600",
-      href: "/register",
       features: [
         { text: "1 個 Bot", included: true },
         { text: "每月 300 則訊息", included: true },
@@ -28,16 +33,15 @@ export default function PricingPage() {
       ],
     },
     {
+      key: "pro",
       name: "專業",
       monthly: 1290,
       yearly: 10790,
-      period: "/月",
       desc: "成長中的企業首選",
       color: "border-blue-500",
       badge: "最受歡迎",
       cta: "立即升級",
       ctaStyle: "bg-blue-600 hover:bg-blue-700",
-      href: "/register",
       features: [
         { text: "5 個 Bot", included: true },
         { text: "每月 5,000 則訊息", included: true },
@@ -50,16 +54,15 @@ export default function PricingPage() {
       ],
     },
     {
+      key: "business",
       name: "商業",
       monthly: 3490,
       yearly: 29290,
-      period: "/月",
       desc: "大型企業、代理商",
       color: "border-purple-500",
       badge: null,
-      cta: "聯繫我們",
+      cta: "立即升級",
       ctaStyle: "bg-purple-600 hover:bg-purple-700",
-      href: "mailto:hello@landehui.online",
       features: [
         { text: "無限 Bot", included: true },
         { text: "每月 30,000 則訊息", included: true },
@@ -77,9 +80,53 @@ export default function PricingPage() {
     if (plan.monthly === 0) return { display: "NT$0", sub: "永久免費" };
     if (annual) {
       const monthly = Math.round(plan.yearly / 12);
-      return { display: `NT$${monthly}`, sub: `年付 NT$${plan.yearly.toLocaleString()}` };
+      return { display: `NT$${monthly.toLocaleString()}`, sub: `年付 NT$${plan.yearly.toLocaleString()}` };
     }
-    return { display: `NT$${plan.monthly}`, sub: "月付" };
+    return { display: `NT$${plan.monthly.toLocaleString()}`, sub: "月付" };
+  };
+
+  const handleUpgrade = async (planKey: string) => {
+    if (planKey === "free") {
+      router.push("/register");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      // 未登入 → 導到登入頁，登入後回來
+      router.push(`/login?redirect=/pricing`);
+      return;
+    }
+
+    const loadingKey = `${planKey}_${annual ? "annual" : "monthly"}`;
+    setLoading(loadingKey);
+
+    try {
+      const res = await fetch(`${API}/stripe/checkout`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          plan: planKey,
+          billing_cycle: annual ? "annual" : "monthly",
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(`錯誤：${err.detail || "請稍後再試"}`);
+        return;
+      }
+
+      const { checkout_url } = await res.json();
+      window.location.href = checkout_url;
+    } catch {
+      alert("連線失敗，請稍後再試");
+    } finally {
+      setLoading(null);
+    }
   };
 
   return (
@@ -127,6 +174,9 @@ export default function PricingPage() {
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6 px-6 pb-16 max-w-5xl mx-auto">
         {plans.map((plan) => {
           const price = getPrice(plan);
+          const loadingKey = `${plan.key}_${annual ? "annual" : "monthly"}`;
+          const isLoading = loading === loadingKey;
+
           return (
             <div
               key={plan.name}
@@ -160,12 +210,13 @@ export default function PricingPage() {
                 ))}
               </ul>
 
-              <a
-                href={plan.href}
-                className={`block text-center py-3 rounded-xl font-semibold transition ${plan.ctaStyle}`}
+              <button
+                onClick={() => handleUpgrade(plan.key)}
+                disabled={isLoading}
+                className={`w-full text-center py-3 rounded-xl font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed ${plan.ctaStyle}`}
               >
-                {plan.cta}
-              </a>
+                {isLoading ? "跳轉中..." : plan.cta}
+              </button>
             </div>
           );
         })}

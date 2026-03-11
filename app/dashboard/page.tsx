@@ -141,13 +141,14 @@ export default function DashboardPage() {
                   ⚡ 升級方案
                 </a>
               ) : (
-                <button
-                  onClick={openPortal}
-                  disabled={portalLoading}
+                <a
+                  href="https://app.lemonsqueezy.com/my-orders"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-xs opacity-70 hover:opacity-100 transition underline"
                 >
-                  {portalLoading ? "..." : "管理訂閱"}
-                </button>
+                  管理訂閱
+                </a>
               )}
             </div>
           </div>

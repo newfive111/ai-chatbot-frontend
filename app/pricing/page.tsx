@@ -115,8 +115,13 @@ export default function PricingPage() {
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        alert(`錯誤：${err.detail || "請稍後再試"}`);
+        let msg = "請稍後再試";
+        try { msg = (await res.json()).detail || msg; } catch {}
+        if (res.status === 401) {
+          router.push(`/login?redirect=/pricing`);
+          return;
+        }
+        alert(`錯誤：${msg}`);
         return;
       }
 

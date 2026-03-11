@@ -35,7 +35,7 @@ interface AnalyticsData {
   recent_questions: string[];
 }
 
-const API = process.env.NEXT_PUBLIC_API_URL || "https://graceful-patience-production-0170.up.railway.app";
+const API = "/api/proxy";
 
 const PROMPT_PRESETS = [
   { key: "customer_service", label: "👩‍💼 親切客服", desc: "耐心解答、親切有禮", prompt: "你是「{bot_name}」的客服人員，負責解答客戶問題、處理服務需求，保持親切耐心的態度。" },

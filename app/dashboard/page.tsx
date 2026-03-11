@@ -18,7 +18,7 @@ interface Subscription {
   current_period_end: string | null;
 }
 
-const API = "https://graceful-patience-production-0170.up.railway.app";
+const API = "/api/proxy";
 
 function getBotProgress(bot: Bot, knowledgeCounts: Record<string, number>): number {
   let done = 1; // Bot 建立

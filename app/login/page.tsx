@@ -16,7 +16,7 @@ function LoginForm() {
     setLoading(true);
     setError("");
     try {
-      const API = process.env.NEXT_PUBLIC_API_URL || "https://graceful-patience-production-0170.up.railway.app";
+      const API = "/api/proxy";
       const res = await axios.post(`${API}/auth/login`, { email, password });
       localStorage.setItem("token", res.data.token);
       const redirect = searchParams.get("redirect") || "/dashboard";

@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { useParams, useRouter } from "next/navigation";
 
-const API = "https://graceful-patience-production-0170.up.railway.app";
+const API = "/api/proxy";
 
 const PROMPT_PRESETS = [
   {

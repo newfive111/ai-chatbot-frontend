@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "https://graceful-patience-production-0170.up.railway.app";
+const API = "/api/proxy";
 
 export default function PricingPage() {
   const [annual, setAnnual] = useState(false);

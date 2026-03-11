@@ -15,7 +15,7 @@ export default function RegisterPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.post("https://graceful-patience-production-0170.up.railway.app/auth/register", { email, password });
+      const res = await axios.post("/api/proxy/auth/register", { email, password });
       localStorage.setItem("token", res.data.token);
       router.push("/dashboard");
     } catch {

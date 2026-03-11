@@ -1,10 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import axios from "axios";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -18,7 +19,8 @@ export default function LoginPage() {
       const API = process.env.NEXT_PUBLIC_API_URL || "https://graceful-patience-production-0170.up.railway.app";
       const res = await axios.post(`${API}/auth/login`, { email, password });
       localStorage.setItem("token", res.data.token);
-      router.push("/dashboard");
+      const redirect = searchParams.get("redirect") || "/dashboard";
+      router.push(redirect);
     } catch {
       setError("帳號或密碼錯誤");
     } finally {
@@ -64,5 +66,13 @@ export default function LoginPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

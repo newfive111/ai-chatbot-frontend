@@ -127,8 +127,9 @@ export default function PricingPage() {
 
       const { checkout_url } = await res.json();
       window.location.href = checkout_url;
-    } catch {
-      alert("連線失敗，請稍後再試");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(`連線失敗：${msg}`);
     } finally {
       setLoading(null);
     }

@@ -142,12 +142,10 @@ export default function DashboardPage() {
                 </a>
               ) : (
                 <a
-                  href="https://app.lemonsqueezy.com/my-orders"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="mailto:support@landehui.online?subject=訂閱管理申請"
                   className="text-xs opacity-70 hover:opacity-100 transition underline"
                 >
-                  管理訂閱
+                  聯絡客服管理訂閱
                 </a>
               )}
             </div>

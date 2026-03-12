@@ -28,17 +28,17 @@ const PAID_FEATURES = [
 ];
 
 export default function PricingPage() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<string | null>(null);
   const router = useRouter();
 
-  const handleBuy = async () => {
+  const handleBuy = async (plan: "bot" | "business") => {
     const token = localStorage.getItem("token");
     if (!token) {
       router.push("/login?redirect=/pricing");
       return;
     }
 
-    setLoading(true);
+    setLoading(plan);
     try {
       const res = await fetch(`${API}/stripe/checkout`, {
         method: "POST",
@@ -46,7 +46,7 @@ export default function PricingPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ plan: "bot", billing_cycle: "monthly" }),
+        body: JSON.stringify({ plan, billing_cycle: "monthly" }),
       });
 
       if (!res.ok) {
@@ -63,7 +63,7 @@ export default function PricingPage() {
       const msg = err instanceof Error ? err.message : String(err);
       alert(`連線失敗：${msg}`);
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
   };
 
@@ -88,7 +88,7 @@ export default function PricingPage() {
       </section>
 
       {/* Plans */}
-      <section className="flex flex-col md:flex-row gap-6 px-6 pb-16 max-w-3xl mx-auto">
+      <section className="flex flex-col md:flex-row gap-6 px-6 pb-16 max-w-5xl mx-auto">
 
         {/* Free */}
         <div className="flex-1 bg-gray-900 rounded-2xl p-8 border-2 border-gray-700 flex flex-col">
@@ -136,11 +136,51 @@ export default function PricingPage() {
             ))}
           </ul>
           <button
-            onClick={handleBuy}
-            disabled={loading}
+            onClick={() => handleBuy("bot")}
+            disabled={loading !== null}
             className="w-full text-center py-3 rounded-xl font-semibold transition disabled:opacity-60 bg-blue-600 hover:bg-blue-700"
           >
-            {loading ? "跳轉中..." : "立即購買"}
+            {loading === "bot" ? "跳轉中..." : "立即購買"}
+          </button>
+        </div>
+
+        {/* Business */}
+        <div className="flex-1 relative bg-gray-900 rounded-2xl p-8 border-2 border-purple-500 flex flex-col">
+          <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-purple-600 text-white text-xs font-bold px-4 py-1 rounded-full">
+            最划算
+          </div>
+          <div className="mb-6">
+            <h2 className="text-xl font-bold mb-1">商業版</h2>
+            <p className="text-gray-400 text-sm mb-4">3 個以上 Bot，選這個更省</p>
+            <div className="flex items-end gap-1 mb-1">
+              <span className="text-4xl font-bold">NT$4,680</span>
+              <span className="text-gray-400 mb-1">/月</span>
+            </div>
+            <p className="text-gray-500 text-xs">包含 10 個 Bot・每個只要 NT$468</p>
+          </div>
+          <ul className="flex flex-col gap-3 mb-8 flex-1">
+            {[
+              "10 個完整 Bot",
+              "無限則訊息",
+              "網站嵌入（Widget）",
+              "完整數據分析",
+              "LINE Bot 整合",
+              "關鍵字觸發",
+              "移除 Powered by LazyReply",
+              "優先客服支援",
+            ].map((f) => (
+              <li key={f} className="flex items-center gap-3 text-sm">
+                <span className="text-green-400">✓</span>
+                <span className="text-gray-200">{f}</span>
+              </li>
+            ))}
+          </ul>
+          <button
+            onClick={() => handleBuy("business")}
+            disabled={loading !== null}
+            className="w-full text-center py-3 rounded-xl font-semibold transition disabled:opacity-60 bg-purple-600 hover:bg-purple-700"
+          >
+            {loading === "business" ? "跳轉中..." : "立即購買"}
           </button>
         </div>
       </section>

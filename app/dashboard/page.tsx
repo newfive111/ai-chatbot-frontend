@@ -62,33 +62,44 @@ export default function DashboardPage() {
   };
 
 const fetchBots = async () => {
-    const res = await axios.get(`${API}/bots`, { headers });
-    const botList: Bot[] = res.data;
-    setBots(botList);
+    try {
+      const res = await axios.get(`${API}/bots`, { headers });
+      const botList: Bot[] = res.data;
+      setBots(botList);
 
-    // Fetch knowledge count for each bot
-    const counts: Record<string, number> = {};
-    await Promise.all(
-      botList.map(async (bot) => {
-        try {
-          const r = await axios.get(`${API}/bots/${bot.id}/knowledge`, { headers });
-          counts[bot.id] = r.data.length;
-        } catch {
-          counts[bot.id] = 0;
-        }
-      })
-    );
-    setKnowledgeCounts(counts);
+      // Fetch knowledge count for each bot
+      const counts: Record<string, number> = {};
+      await Promise.all(
+        botList.map(async (bot) => {
+          try {
+            const r = await axios.get(`${API}/bots/${bot.id}/knowledge`, { headers });
+            counts[bot.id] = r.data.length;
+          } catch {
+            counts[bot.id] = 0;
+          }
+        })
+      );
+      setKnowledgeCounts(counts);
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || "載入 Bot 列表失敗，請重新整理";
+      alert(msg);
+    }
   };
 
   const createBot = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBotName.trim()) return;
     setLoading(true);
-    await axios.post(`${API}/bots?name=${encodeURIComponent(newBotName)}`, {}, { headers });
-    setNewBotName("");
-    await fetchBots();
-    setLoading(false);
+    try {
+      await axios.post(`${API}/bots?name=${encodeURIComponent(newBotName)}`, {}, { headers });
+      setNewBotName("");
+      await fetchBots();
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || "建立失敗，請稍後再試";
+      alert(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const logout = () => {

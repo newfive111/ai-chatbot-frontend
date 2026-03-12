@@ -18,7 +18,7 @@ const FREE_FEATURES = [
 
 const PAID_FEATURES = [
   { text: "1 個完整 Bot", included: true },
-  { text: "無限則訊息", included: true },
+  { text: "無限則訊息（用自己 API Key）", included: true },
   { text: "網站嵌入（Widget）", included: true },
   { text: "完整數據分析", included: true },
   { text: "LINE Bot 整合", included: true },
@@ -161,7 +161,7 @@ export default function PricingPage() {
           <ul className="flex flex-col gap-3 mb-8 flex-1">
             {[
               "10 個完整 Bot",
-              "無限則訊息",
+              "無限則訊息（用自己 API Key）",
               "網站嵌入（Widget）",
               "完整數據分析",
               "LINE Bot 整合",

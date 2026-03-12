@@ -8,9 +8,9 @@ const API = "/api/proxy";
 const FREE_FEATURES = [
   { text: "1 個 Bot（功能受限）", included: true },
   { text: "每月 300 則訊息", included: true },
-  { text: "網站嵌入（Widget）", included: true },
+  { text: "LINE Bot 整合", included: true },
   { text: "基本數據分析", included: true },
-  { text: "LINE Bot 整合", included: false },
+  { text: "網站嵌入（Widget）", included: false },
   { text: "關鍵字觸發", included: false },
   { text: "移除 Powered by LazyReply", included: false },
   { text: "優先客服支援", included: false },

@@ -12,10 +12,11 @@ interface Bot {
 }
 
 interface Subscription {
-  plan: "free" | "pro" | "business";
+  plan: "free" | "paid";
+  bot_slots: number;
+  max_bots: number;
+  bots_used: number;
   status: string;
-  billing_cycle: string | null;
-  current_period_end: string | null;
 }
 
 const API = "/api/proxy";
@@ -28,15 +29,9 @@ function getBotProgress(bot: Bot, knowledgeCounts: Record<string, number>): numb
   return done;
 }
 
-const PLAN_LABEL: Record<string, string> = {
-  free:     "免費版",
-  pro:      "專業版",
-  business: "商業版",
-};
 const PLAN_COLOR: Record<string, string> = {
-  free:     "bg-gray-800 text-gray-400",
-  pro:      "bg-blue-900/50 text-blue-400 border border-blue-800",
-  business: "bg-purple-900/50 text-purple-400 border border-purple-800",
+  free: "bg-gray-800/60 text-gray-400 border border-gray-700",
+  paid: "bg-blue-900/40 text-blue-300 border border-blue-800",
 };
 
 export default function DashboardPage() {
@@ -46,7 +41,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [knowledgeCounts, setKnowledgeCounts] = useState<Record<string, number>>({});
   const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [portalLoading, setPortalLoading] = useState(false);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const headers = { Authorization: `Bearer ${token}` };
@@ -62,23 +56,11 @@ export default function DashboardPage() {
       const res = await axios.get(`${API}/me/subscription`, { headers });
       setSubscription(res.data);
     } catch {
-      setSubscription({ plan: "free", status: "active", billing_cycle: null, current_period_end: null });
+      setSubscription({ plan: "free", bot_slots: 0, max_bots: 1, bots_used: 0, status: "active" });
     }
   };
 
-  const openPortal = async () => {
-    setPortalLoading(true);
-    try {
-      const res = await axios.post(`${API}/stripe/portal`, {}, { headers });
-      window.location.href = res.data.portal_url;
-    } catch {
-      alert("無法開啟訂閱管理頁，請確認是否已有訂閱");
-    } finally {
-      setPortalLoading(false);
-    }
-  };
-
-  const fetchBots = async () => {
+const fetchBots = async () => {
     const res = await axios.get(`${API}/bots`, { headers });
     const botList: Bot[] = res.data;
     setBots(botList);
@@ -121,33 +103,26 @@ export default function DashboardPage() {
           <button onClick={logout} className="text-gray-400 hover:text-white text-sm">登出</button>
         </div>
 
-        {/* 訂閱狀態列 */}
+        {/* Bot 名額狀態列 */}
         {subscription && (
           <div className={`flex items-center justify-between px-4 py-3 rounded-xl mb-6 text-sm ${PLAN_COLOR[subscription.plan]}`}>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold">{PLAN_LABEL[subscription.plan]}</span>
-              {subscription.status === "past_due" && (
-                <span className="text-red-400 text-xs">⚠️ 付款逾期</span>
-              )}
-              {subscription.current_period_end && (
-                <span className="opacity-60 text-xs">
-                  到期：{new Date(subscription.current_period_end).toLocaleDateString("zh-TW")}
-                </span>
-              )}
+            <div className="flex items-center gap-3">
+              <span className="font-semibold">
+                🤖 Bot {subscription.bots_used} / {subscription.max_bots}
+              </span>
+              <span className="opacity-60 text-xs">
+                {subscription.bot_slots > 0
+                  ? `${subscription.bot_slots} 個付費訂閱`
+                  : "免費方案"}
+              </span>
             </div>
             <div className="flex gap-2">
-              {subscription.plan === "free" ? (
-                <a href="/pricing" className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition font-medium">
-                  ⚡ 升級方案
-                </a>
-              ) : (
-                <a
-                  href="mailto:support@landehui.online?subject=訂閱管理申請"
-                  className="text-xs opacity-70 hover:opacity-100 transition underline"
-                >
-                  聯絡客服管理訂閱
-                </a>
-              )}
+              <a
+                href="/pricing"
+                className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition font-medium"
+              >
+                + 新增 Bot 名額
+              </a>
             </div>
           </div>
         )}

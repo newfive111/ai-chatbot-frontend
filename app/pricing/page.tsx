@@ -5,102 +5,40 @@ import { useRouter } from "next/navigation";
 
 const API = "/api/proxy";
 
+const FREE_FEATURES = [
+  { text: "1 個 Bot（功能受限）", included: true },
+  { text: "每月 300 則訊息", included: true },
+  { text: "網站嵌入（Widget）", included: true },
+  { text: "基本數據分析", included: true },
+  { text: "LINE Bot 整合", included: false },
+  { text: "關鍵字觸發", included: false },
+  { text: "移除 Powered by LazyReply", included: false },
+  { text: "優先客服支援", included: false },
+];
+
+const PAID_FEATURES = [
+  { text: "1 個完整 Bot", included: true },
+  { text: "無限則訊息", included: true },
+  { text: "網站嵌入（Widget）", included: true },
+  { text: "完整數據分析", included: true },
+  { text: "LINE Bot 整合", included: true },
+  { text: "關鍵字觸發", included: true },
+  { text: "移除 Powered by LazyReply", included: true },
+  { text: "優先客服支援", included: true },
+];
+
 export default function PricingPage() {
-  const [annual, setAnnual] = useState(false);
-  const [loading, setLoading] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const plans = [
-    {
-      key: "free",
-      name: "免費",
-      monthly: 0,
-      yearly: 0,
-      desc: "個人試用、小型測試",
-      color: "border-gray-700",
-      badge: null,
-      cta: "免費開始",
-      ctaStyle: "bg-gray-700 hover:bg-gray-600",
-      features: [
-        { text: "1 個 Bot", included: true },
-        { text: "每月 300 則訊息", included: true },
-        { text: "網站嵌入（Widget）", included: true },
-        { text: "基本數據分析", included: true },
-        { text: "LINE Bot 整合", included: false },
-        { text: "關鍵字觸發", included: false },
-        { text: "移除「Powered by LazyReply」", included: false },
-        { text: "優先客服支援", included: false },
-      ],
-    },
-    {
-      key: "pro",
-      name: "專業",
-      monthly: 1290,
-      yearly: 10790,
-      desc: "成長中的企業首選",
-      color: "border-blue-500",
-      badge: "最受歡迎",
-      cta: "立即升級",
-      ctaStyle: "bg-blue-600 hover:bg-blue-700",
-      features: [
-        { text: "5 個 Bot", included: true },
-        { text: "每月 5,000 則訊息", included: true },
-        { text: "網站嵌入（Widget）", included: true },
-        { text: "完整數據分析", included: true },
-        { text: "LINE Bot 整合", included: true },
-        { text: "關鍵字觸發", included: true },
-        { text: "移除「Powered by LazyReply」", included: false },
-        { text: "優先客服支援", included: false },
-      ],
-    },
-    {
-      key: "business",
-      name: "商業",
-      monthly: 3490,
-      yearly: 29290,
-      desc: "大型企業、代理商",
-      color: "border-purple-500",
-      badge: null,
-      cta: "立即升級",
-      ctaStyle: "bg-purple-600 hover:bg-purple-700",
-      features: [
-        { text: "無限 Bot", included: true },
-        { text: "每月 30,000 則訊息", included: true },
-        { text: "網站嵌入（Widget）", included: true },
-        { text: "完整數據分析", included: true },
-        { text: "LINE Bot 整合", included: true },
-        { text: "關鍵字觸發", included: true },
-        { text: "移除「Powered by LazyReply」", included: true },
-        { text: "優先客服支援", included: true },
-      ],
-    },
-  ];
-
-  const getPrice = (plan: typeof plans[0]) => {
-    if (plan.monthly === 0) return { display: "NT$0", sub: "永久免費" };
-    if (annual) {
-      const monthly = Math.round(plan.yearly / 12);
-      return { display: `NT$${monthly.toLocaleString()}`, sub: `年付 NT$${plan.yearly.toLocaleString()}` };
-    }
-    return { display: `NT$${plan.monthly.toLocaleString()}`, sub: "月付" };
-  };
-
-  const handleUpgrade = async (planKey: string) => {
-    if (planKey === "free") {
-      router.push("/register");
-      return;
-    }
-
+  const handleBuy = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
-      // 未登入 → 導到登入頁，登入後回來
-      router.push(`/login?redirect=/pricing`);
+      router.push("/login?redirect=/pricing");
       return;
     }
 
-    const loadingKey = `${planKey}_${annual ? "annual" : "monthly"}`;
-    setLoading(loadingKey);
-
+    setLoading(true);
     try {
       const res = await fetch(`${API}/stripe/checkout`, {
         method: "POST",
@@ -108,19 +46,13 @@ export default function PricingPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          plan: planKey,
-          billing_cycle: annual ? "annual" : "monthly",
-        }),
+        body: JSON.stringify({ plan: "bot", billing_cycle: "monthly" }),
       });
 
       if (!res.ok) {
         let msg = "請稍後再試";
         try { msg = (await res.json()).detail || msg; } catch {}
-        if (res.status === 401) {
-          router.push(`/login?redirect=/pricing`);
-          return;
-        }
+        if (res.status === 401) { router.push("/login?redirect=/pricing"); return; }
         alert(`錯誤：${msg}`);
         return;
       }
@@ -131,101 +63,97 @@ export default function PricingPage() {
       const msg = err instanceof Error ? err.message : String(err);
       alert(`連線失敗：${msg}`);
     } finally {
-      setLoading(null);
+      setLoading(false);
     }
   };
 
   return (
     <main className="min-h-screen bg-gray-950 text-white">
 
-      {/* 頂部導覽 */}
+      {/* Nav */}
       <nav className="flex justify-between items-center px-8 py-5 border-b border-gray-800">
         <a href="/" className="text-xl font-bold">😴 懶得回 LazyReply</a>
         <div className="flex gap-3 items-center">
-          <a href="/login" className="px-4 py-2 text-gray-300 hover:text-white transition text-sm">
-            登入
-          </a>
-          <a href="/register" className="px-5 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold transition">
-            免費註冊
-          </a>
+          <a href="/login" className="px-4 py-2 text-gray-300 hover:text-white transition text-sm">登入</a>
+          <a href="/register" className="px-5 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold transition">免費註冊</a>
         </div>
       </nav>
 
-      {/* 標題 */}
+      {/* Hero */}
       <section className="text-center px-4 py-16">
-        <h1 className="text-4xl font-bold mb-4">簡單透明的定價</h1>
-        <p className="text-gray-400 text-lg max-w-xl mx-auto mb-8">
-          從免費開始，按需升級。不需要信用卡，隨時可以取消。
+        <h1 className="text-4xl font-bold mb-4">一個 Bot，一個價格</h1>
+        <p className="text-gray-400 text-lg max-w-xl mx-auto">
+          不用猜方案、不用算額度。需要幾個 Bot 就買幾個，每個 NT$1,290/月。
         </p>
+      </section>
 
-        {/* 月付 / 年付切換 */}
-        <div className="inline-flex items-center gap-3 bg-gray-900 rounded-xl p-1">
+      {/* Plans */}
+      <section className="flex flex-col md:flex-row gap-6 px-6 pb-16 max-w-3xl mx-auto">
+
+        {/* Free */}
+        <div className="flex-1 bg-gray-900 rounded-2xl p-8 border-2 border-gray-700 flex flex-col">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold mb-1">免費</h2>
+            <p className="text-gray-400 text-sm mb-4">試試看，不需信用卡</p>
+            <div className="flex items-end gap-1 mb-1">
+              <span className="text-4xl font-bold">NT$0</span>
+            </div>
+            <p className="text-gray-500 text-xs">永久免費</p>
+          </div>
+          <ul className="flex flex-col gap-3 mb-8 flex-1">
+            {FREE_FEATURES.map((f) => (
+              <li key={f.text} className="flex items-center gap-3 text-sm">
+                <span className={f.included ? "text-green-400" : "text-gray-600"}>{f.included ? "✓" : "✗"}</span>
+                <span className={f.included ? "text-gray-200" : "text-gray-500"}>{f.text}</span>
+              </li>
+            ))}
+          </ul>
+          <a href="/register" className="block w-full text-center py-3 rounded-xl font-semibold transition bg-gray-700 hover:bg-gray-600">
+            免費開始
+          </a>
+        </div>
+
+        {/* Paid Bot */}
+        <div className="flex-1 relative bg-gray-900 rounded-2xl p-8 border-2 border-blue-500 flex flex-col">
+          <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs font-bold px-4 py-1 rounded-full">
+            完整功能
+          </div>
+          <div className="mb-6">
+            <h2 className="text-xl font-bold mb-1">Bot 訂閱</h2>
+            <p className="text-gray-400 text-sm mb-4">每個 Bot 獨立訂閱，按需購買</p>
+            <div className="flex items-end gap-1 mb-1">
+              <span className="text-4xl font-bold">NT$1,290</span>
+              <span className="text-gray-400 mb-1">/月・每個 Bot</span>
+            </div>
+            <p className="text-gray-500 text-xs">需要第 2 個 Bot？再買一次即可</p>
+          </div>
+          <ul className="flex flex-col gap-3 mb-8 flex-1">
+            {PAID_FEATURES.map((f) => (
+              <li key={f.text} className="flex items-center gap-3 text-sm">
+                <span className="text-green-400">✓</span>
+                <span className="text-gray-200">{f.text}</span>
+              </li>
+            ))}
+          </ul>
           <button
-            onClick={() => setAnnual(false)}
-            className={`px-5 py-2 rounded-lg text-sm font-semibold transition ${!annual ? "bg-white text-gray-900" : "text-gray-400 hover:text-white"}`}
+            onClick={handleBuy}
+            disabled={loading}
+            className="w-full text-center py-3 rounded-xl font-semibold transition disabled:opacity-60 bg-blue-600 hover:bg-blue-700"
           >
-            月付
-          </button>
-          <button
-            onClick={() => setAnnual(true)}
-            className={`px-5 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 ${annual ? "bg-white text-gray-900" : "text-gray-400 hover:text-white"}`}
-          >
-            年付
-            <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">省2個月</span>
+            {loading ? "跳轉中..." : "立即購買"}
           </button>
         </div>
       </section>
 
-      {/* 方案卡片 */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6 px-6 pb-16 max-w-5xl mx-auto">
-        {plans.map((plan) => {
-          const price = getPrice(plan);
-          const loadingKey = `${plan.key}_${annual ? "annual" : "monthly"}`;
-          const isLoading = loading === loadingKey;
-
-          return (
-            <div
-              key={plan.name}
-              className={`relative bg-gray-900 rounded-2xl p-8 border-2 ${plan.color} flex flex-col`}
-            >
-              {plan.badge && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs font-bold px-4 py-1 rounded-full">
-                  {plan.badge}
-                </div>
-              )}
-              <div className="mb-6">
-                <h2 className="text-xl font-bold mb-1">{plan.name}</h2>
-                <p className="text-gray-400 text-sm mb-4">{plan.desc}</p>
-                <div className="flex items-end gap-1 mb-1">
-                  <span className="text-4xl font-bold">{price.display}</span>
-                  {plan.monthly !== 0 && <span className="text-gray-400 mb-1">/月</span>}
-                </div>
-                <p className="text-gray-500 text-xs">{price.sub}</p>
-              </div>
-
-              <ul className="flex flex-col gap-3 mb-8 flex-1">
-                {plan.features.map((f) => (
-                  <li key={f.text} className="flex items-center gap-3 text-sm">
-                    <span className={f.included ? "text-green-400" : "text-gray-600"}>
-                      {f.included ? "✓" : "✗"}
-                    </span>
-                    <span className={f.included ? "text-gray-200" : "text-gray-500"}>
-                      {f.text}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-
-              <button
-                onClick={() => handleUpgrade(plan.key)}
-                disabled={isLoading}
-                className={`w-full text-center py-3 rounded-xl font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed ${plan.ctaStyle}`}
-              >
-                {isLoading ? "跳轉中..." : plan.cta}
-              </button>
-            </div>
-          );
-        })}
+      {/* Multi-bot callout */}
+      <section className="max-w-3xl mx-auto px-6 pb-12">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col md:flex-row items-center gap-6">
+          <div className="text-4xl">🤖🤖🤖</div>
+          <div>
+            <h3 className="font-bold text-lg mb-1">管理多個 Bot？</h3>
+            <p className="text-gray-400 text-sm">每個 Bot 各自 NT$1,290/月。在 Dashboard 建立新 Bot 後，點「啟用此 Bot」即可購買該 Bot 的訂閱。</p>
+          </div>
+        </div>
       </section>
 
       {/* FAQ */}
@@ -233,26 +161,11 @@ export default function PricingPage() {
         <h2 className="text-2xl font-bold text-center mb-8">常見問題</h2>
         <div className="flex flex-col gap-4">
           {[
-            {
-              q: "訊息數量怎麼計算？",
-              a: "每一則用戶傳送的訊息算一則。AI 的回覆不計入。每月 1 日重設。",
-            },
-            {
-              q: "超出訊息限制會怎樣？",
-              a: "Bot 會暫停回應，直到下個月重設。可隨時升級方案。",
-            },
-            {
-              q: "年付可以退款嗎？",
-              a: "年付後 7 天內可申請全額退款。超過後恕不退費，但可繼續使用至年度到期。",
-            },
-            {
-              q: "可以隨時取消嗎？",
-              a: "可以。取消後降為免費方案，已付費的月份仍可使用到期末。",
-            },
-            {
-              q: "支援哪些付款方式？",
-              a: "信用卡、金融卡（Visa、Mastercard）。",
-            },
+            { q: "免費版和付費版差在哪？", a: "免費版每月限 300 則訊息，且不含 LINE 整合、關鍵字觸發等功能。付費版完全解鎖，無訊息上限。" },
+            { q: "我需要 3 個 Bot，怎麼辦？", a: "購買 3 次 Bot 訂閱即可，每個 NT$1,290/月，共 NT$3,870/月。各 Bot 功能完全相同。" },
+            { q: "可以隨時取消嗎？", a: "可以。取消後該 Bot 降回免費限制，已付費的月份仍可使用到期末。" },
+            { q: "支援哪些付款方式？", a: "信用卡、金融卡（Visa、Mastercard）。" },
+            { q: "發票怎麼開？", a: "付款完成後 Lemon Squeezy 會自動寄收據到你的 Email。需要公司抬頭請聯絡客服。" },
           ].map((item) => (
             <div key={item.q} className="bg-gray-900 rounded-xl p-5">
               <h3 className="font-semibold mb-2">{item.q}</h3>

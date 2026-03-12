@@ -9,6 +9,7 @@ interface Bot {
   created_at: string;
   has_api_key?: boolean;
   collect_fields?: string[];
+  plan?: "free" | "paid";
 }
 
 interface Subscription {
@@ -172,14 +173,32 @@ const fetchBots = async () => {
                 >
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <h2 className="font-semibold text-lg">{bot.name}</h2>
-                      <p className="text-gray-500 text-xs mt-0.5">ID: {bot.id}</p>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <h2 className="font-semibold text-lg">{bot.name}</h2>
+                        {bot.plan === "paid" ? (
+                          <span className="text-xs bg-blue-900 text-blue-300 border border-blue-700 px-2 py-0.5 rounded-full">💎 付費</span>
+                        ) : (
+                          <span className="text-xs bg-gray-800 text-gray-400 border border-gray-700 px-2 py-0.5 rounded-full">🔒 免費</span>
+                        )}
+                      </div>
+                      <p className="text-gray-500 text-xs">ID: {bot.id}</p>
                     </div>
-                    {isSetupDone ? (
-                      <span className="text-xs bg-green-900 text-green-400 px-2 py-1 rounded-full">✅ 已就緒</span>
-                    ) : (
-                      <span className="text-xs bg-yellow-900/50 text-yellow-400 px-2 py-1 rounded-full">⚙️ 設定中</span>
-                    )}
+                    <div className="flex flex-col items-end gap-1.5">
+                      {isSetupDone ? (
+                        <span className="text-xs bg-green-900 text-green-400 px-2 py-1 rounded-full">✅ 已就緒</span>
+                      ) : (
+                        <span className="text-xs bg-yellow-900/50 text-yellow-400 px-2 py-1 rounded-full">⚙️ 設定中</span>
+                      )}
+                      {bot.plan === "free" && (
+                        <a
+                          href="/pricing"
+                          onClick={e => e.stopPropagation()}
+                          className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded-full transition"
+                        >
+                          ⚡ 啟用完整功能
+                        </a>
+                      )}
+                    </div>
                   </div>
 
                   {/* 進度條 */}

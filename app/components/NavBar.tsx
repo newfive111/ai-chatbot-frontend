@@ -10,9 +10,8 @@ export default function NavBar() {
 
   return (
     <nav className="flex justify-between items-center px-8 py-5 border-b border-gray-800">
-      <a href="/" className="flex items-center gap-2">
-        <img src="/logo.png" alt="攬得回" className="h-9 w-9 rounded-lg" />
-        <span className="text-xl font-bold">攬得回</span>
+      <a href="/">
+        <img src="/logo.png" alt="攬得回" className="h-11 w-11 rounded-xl" />
       </a>
       <div className="flex gap-3 items-center">
         <a href="/pricing" className="px-4 py-2 text-gray-300 hover:text-white transition text-sm">定價</a>

@@ -13,7 +13,7 @@ const FREE_FEATURES = [
   { text: "基本數據分析", included: true },
   { text: "網站嵌入（Widget）", included: false },
   { text: "關鍵字觸發", included: false },
-  { text: "移除 Powered by LazyReply", included: false },
+  { text: "移除 Powered by landehui", included: false },
   { text: "優先客服支援", included: false },
 ];
 
@@ -24,7 +24,7 @@ const BOT_FEATURES = [
   "完整數據分析",
   "LINE Bot 整合",
   "關鍵字觸發",
-  "移除 Powered by LazyReply",
+  "移除 Powered by landehui",
   "優先客服支援",
 ];
 
@@ -35,7 +35,7 @@ const BIZ_FEATURES = [
   "完整數據分析",
   "LINE Bot 整合",
   "關鍵字觸發",
-  "移除 Powered by LazyReply",
+  "移除 Powered by landehui",
   "優先客服支援",
 ];
 

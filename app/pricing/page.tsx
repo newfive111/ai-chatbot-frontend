@@ -132,8 +132,11 @@ export default function PricingPage() {
               </li>
             ))}
           </ul>
-          <a href="/register" className="block w-full text-center py-3 rounded-xl font-semibold transition bg-gray-700 hover:bg-gray-600">
-            免費開始
+          <a
+            href={typeof window !== "undefined" && localStorage.getItem("token") ? "/dashboard" : "/register"}
+            className="block w-full text-center py-3 rounded-xl font-semibold transition bg-gray-700 hover:bg-gray-600"
+          >
+            {typeof window !== "undefined" && localStorage.getItem("token") ? "進入後台" : "免費開始"}
           </a>
         </div>
 

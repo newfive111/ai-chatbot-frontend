@@ -65,7 +65,10 @@ export default function AdminPage() {
         headers,
         body: JSON.stringify({ slots }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.detail || `HTTP ${res.status}`);
+      }
       setUsers(u =>
         u.map(r =>
           r.user_id === userId
@@ -73,8 +76,8 @@ export default function AdminPage() {
             : r
         )
       );
-    } catch {
-      alert("更新失敗");
+    } catch (err: any) {
+      alert(err?.message || "更新失敗");
     } finally {
       setUpdating(null);
     }

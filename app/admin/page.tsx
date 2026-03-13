@@ -4,29 +4,21 @@ import { useRouter } from "next/navigation";
 
 const API = "/api/proxy";
 
-const PLAN_LABEL: Record<string, string> = { free: "免費", pro: "專業", business: "商業" };
-const PLAN_COLOR: Record<string, string> = {
-  free:     "bg-gray-700 text-gray-300",
-  pro:      "bg-blue-900 text-blue-300",
-  business: "bg-purple-900 text-purple-300",
-};
-
 interface UserRow {
   user_id: string;
   email: string;
   created_at: string;
-  plan: string;
-  status: string;
-  billing_cycle: string | null;
-  current_period_end: string | null;
-  bot_count: number;
+  bot_slots: number;
+  max_bots: number;
+  bots_used: number;
+  renews_at: string | null;
 }
 
 interface Stats {
   total_users: number;
   total_bots: number;
   paid_users: number;
-  plan_counts: Record<string, number>;
+  total_slots: number;
 }
 
 export default function AdminPage() {
@@ -65,16 +57,22 @@ export default function AdminPage() {
     }
   };
 
-  const updatePlan = async (userId: string, plan: string, billing_cycle: string | null) => {
+  const setSlots = async (userId: string, slots: number) => {
     setUpdating(userId);
     try {
-      const res = await fetch(`${API}/admin/users/${userId}/plan`, {
-        method: "PATCH",
+      const res = await fetch(`${API}/admin/users/${userId}/slots`, {
+        method: "PUT",
         headers,
-        body: JSON.stringify({ plan, billing_cycle }),
+        body: JSON.stringify({ slots }),
       });
       if (!res.ok) throw new Error();
-      setUsers(u => u.map(r => r.user_id === userId ? { ...r, plan, billing_cycle } : r));
+      setUsers(u =>
+        u.map(r =>
+          r.user_id === userId
+            ? { ...r, bot_slots: slots, max_bots: 1 + slots }
+            : r
+        )
+      );
     } catch {
       alert("更新失敗");
     } finally {
@@ -83,7 +81,7 @@ export default function AdminPage() {
   };
 
   const filtered = users.filter(u =>
-    u.email.toLowerCase().includes(search.toLowerCase())
+    (u.email || "").toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -108,7 +106,7 @@ export default function AdminPage() {
               { label: "總用戶", value: stats.total_users, color: "text-white" },
               { label: "付費用戶", value: stats.paid_users, color: "text-green-400" },
               { label: "總 Bot 數", value: stats.total_bots, color: "text-blue-400" },
-              { label: "免費用戶", value: stats.plan_counts.free ?? 0, color: "text-gray-400" },
+              { label: "付費 Bot 名額", value: stats.total_slots, color: "text-purple-400" },
             ].map(s => (
               <div key={s.label} className="bg-gray-900 rounded-xl p-4">
                 <p className="text-gray-500 text-xs mb-1">{s.label}</p>
@@ -133,10 +131,10 @@ export default function AdminPage() {
             <thead>
               <tr className="border-b border-gray-800 text-gray-400 text-xs">
                 <th className="text-left px-4 py-3">Email</th>
-                <th className="text-left px-4 py-3">Bot 數</th>
-                <th className="text-left px-4 py-3">方案</th>
-                <th className="text-left px-4 py-3">到期</th>
-                <th className="text-left px-4 py-3">操作</th>
+                <th className="text-left px-4 py-3">Bot 使用</th>
+                <th className="text-left px-4 py-3">付費名額</th>
+                <th className="text-left px-4 py-3">續費日</th>
+                <th className="text-left px-4 py-3">手動授權</th>
               </tr>
             </thead>
             <tbody>
@@ -147,36 +145,42 @@ export default function AdminPage() {
               ) : filtered.map(u => (
                 <tr key={u.user_id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition">
                   <td className="px-4 py-3">
-                    <div className="font-medium">{u.email}</div>
-                    <div className="text-gray-500 text-xs">{new Date(u.created_at).toLocaleDateString("zh-TW")}</div>
+                    <div className="font-medium">{u.email || "—"}</div>
+                    <div className="text-gray-500 text-xs">{u.created_at ? new Date(u.created_at).toLocaleDateString("zh-TW") : "—"}</div>
                   </td>
-                  <td className="px-4 py-3 text-gray-400">{u.bot_count}</td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-1 rounded-full ${PLAN_COLOR[u.plan] || PLAN_COLOR.free}`}>
-                      {PLAN_LABEL[u.plan] || u.plan}
-                      {u.billing_cycle && ` · ${u.billing_cycle === "monthly" ? "月" : "年"}`}
+                    <span className={`text-sm font-semibold ${u.bots_used >= u.max_bots ? "text-red-400" : "text-gray-200"}`}>
+                      {u.bots_used} / {u.max_bots}
                     </span>
                   </td>
+                  <td className="px-4 py-3">
+                    {u.bot_slots > 0 ? (
+                      <span className="text-xs bg-blue-900/50 text-blue-300 border border-blue-800 px-2 py-1 rounded-full">
+                        💎 {u.bot_slots} 個名額
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-gray-800 text-gray-400 border border-gray-700 px-2 py-1 rounded-full">
+                        免費
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-gray-400 text-xs">
-                    {u.current_period_end
-                      ? new Date(u.current_period_end).toLocaleDateString("zh-TW")
+                    {u.renews_at
+                      ? new Date(u.renews_at).toLocaleDateString("zh-TW")
                       : "—"}
                   </td>
                   <td className="px-4 py-3">
                     <select
                       disabled={updating === u.user_id}
-                      value={`${u.plan}|${u.billing_cycle ?? ""}`}
-                      onChange={e => {
-                        const [plan, cycle] = e.target.value.split("|");
-                        updatePlan(u.user_id, plan, cycle || null);
-                      }}
+                      value={u.bot_slots}
+                      onChange={e => setSlots(u.user_id, Number(e.target.value))}
                       className="bg-gray-800 text-white text-xs px-2 py-1.5 rounded-lg outline-none disabled:opacity-50 cursor-pointer"
                     >
-                      <option value="free|">免費版</option>
-                      <option value="pro|monthly">專業版 · 月付</option>
-                      <option value="pro|annual">專業版 · 年付</option>
-                      <option value="business|monthly">商業版 · 月付</option>
-                      <option value="business|annual">商業版 · 年付</option>
+                      <option value={0}>免費（0 名額）</option>
+                      <option value={1}>1 個 Bot 名額</option>
+                      <option value={2}>2 個 Bot 名額</option>
+                      <option value={5}>5 個 Bot 名額</option>
+                      <option value={10}>10 個 Bot 名額</option>
                     </select>
                     {updating === u.user_id && (
                       <span className="ml-2 text-xs text-gray-500">更新中…</span>

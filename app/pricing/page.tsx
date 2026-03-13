@@ -2,6 +2,7 @@
 export const dynamic = "force-dynamic";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import NavBar from "../components/NavBar";
 
 const API = "/api/proxy";
 
@@ -84,13 +85,7 @@ export default function PricingPage() {
     <main className="min-h-screen bg-gray-950 text-white">
 
       {/* Nav */}
-      <nav className="flex justify-between items-center px-8 py-5 border-b border-gray-800">
-        <a href="/" className="text-xl font-bold">😴 懶得回 LazyReply</a>
-        <div className="flex gap-3 items-center">
-          <a href="/login" className="px-4 py-2 text-gray-300 hover:text-white transition text-sm">登入</a>
-          <a href="/register" className="px-5 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold transition">免費註冊</a>
-        </div>
-      </nav>
+      <NavBar />
 
       {/* Hero */}
       <section className="text-center px-4 py-16">

@@ -10,7 +10,7 @@ export default function NavBar() {
 
   return (
     <nav className="flex justify-between items-center px-8 py-5 border-b border-gray-800">
-      <a href="/" className="text-xl font-bold">😴 懶得回 LazyReply</a>
+      <a href="/" className="text-xl font-bold">攬得回</a>
       <div className="flex gap-3 items-center">
         <a href="/pricing" className="px-4 py-2 text-gray-300 hover:text-white transition text-sm">定價</a>
         {loggedIn ? (

@@ -95,7 +95,7 @@ export default function AdminPage() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-2xl font-bold">⚙️ 管理後台</h1>
-            <p className="text-gray-500 text-sm mt-1">懶得回 LazyReply</p>
+            <p className="text-gray-500 text-sm mt-1">攬得回</p>
           </div>
           <button onClick={() => router.push("/dashboard")} className="text-gray-400 hover:text-white text-sm">
             ← 回 Dashboard

@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "懶得回 LazyReply",
+  title: "攬得回",
   description: "AI 聊天機器人，自動回覆，省時省力",
 };
 

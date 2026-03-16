@@ -490,7 +490,7 @@ export default function BotDetailPage() {
 
   return (
     <>
-    <main className="min-h-screen bg-gray-950 text-white px-4 py-8">
+    <main className={`min-h-screen bg-gray-950 text-white px-4 py-8 transition-all duration-300 ${assistantOpen ? "md:pr-[376px]" : ""}`}>
       <div className="max-w-3xl mx-auto">
         <button onClick={() => router.push("/dashboard")} className="text-gray-400 hover:text-white mb-6 text-sm">
           ← 返回

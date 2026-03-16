@@ -65,13 +65,27 @@ export default function PricingPage() {
         try { msg = (await res.json()).detail || msg; } catch {}
         if (res.status === 401) { router.push("/login?redirect=/pricing"); return; }
         alert(`錯誤：${msg}`);
+        setLoading(null);
         return;
       }
-      const { checkout_url } = await res.json();
-      window.location.href = checkout_url;
+
+      // 藍新金流：建立隱藏表單自動送出到付款頁
+      const { gateway_url, MerchantID, TradeInfo, TradeSha, Version } = await res.json();
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = gateway_url;
+      ([["MerchantID", MerchantID], ["TradeInfo", TradeInfo], ["TradeSha", TradeSha], ["Version", Version]] as [string, string][]).forEach(([name, value]) => {
+        const input = document.createElement("input");
+        input.type  = "hidden";
+        input.name  = name;
+        input.value = value;
+        form.appendChild(input);
+      });
+      document.body.appendChild(form);
+      form.submit();
+      // 送出後不 setLoading(null)，讓按鈕保持 loading 直到跳頁
     } catch (err: unknown) {
       alert(`連線失敗：${err instanceof Error ? err.message : String(err)}`);
-    } finally {
       setLoading(null);
     }
   };
@@ -83,8 +97,6 @@ export default function PricingPage() {
 
   return (
     <main className="min-h-screen bg-gray-950 text-white">
-
-      {/* Nav */}
       <NavBar />
 
       {/* Hero */}
@@ -210,7 +222,7 @@ export default function PricingPage() {
             { q: "我需要 3 個以上 Bot，怎麼辦？", a: "購買商業版 NT$4,680/月，包含 10 個 Bot 名額，每個 Bot 只要 NT$468，比單買划算許多。" },
             { q: "年付可以退款嗎？", a: "年付後 7 天內可申請全額退款。超過後恕不退費，但可繼續使用至年度到期。" },
             { q: "可以隨時取消嗎？", a: "可以。取消後該 Bot 降回免費限制，已付費的月份仍可使用到期末。" },
-            { q: "支援哪些付款方式？", a: "信用卡、金融卡（Visa、Mastercard）。" },
+            { q: "支援哪些付款方式？", a: "信用卡、金融卡（Visa、Mastercard）、ATM 轉帳、超商代碼繳費（7-11、全家）。" },
           ].map((item) => (
             <div key={item.q} className="bg-gray-900 rounded-xl p-5">
               <h3 className="font-semibold mb-2">{item.q}</h3>

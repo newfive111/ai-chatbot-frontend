@@ -1,17 +1,13 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useRef } from "react";
 import { useRouter } from "next/navigation";
 
 export default function NavBar() {
-  const [loggedIn, setLoggedIn] = useState(false);
   const clickCount = useRef(0);
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    setLoggedIn(!!localStorage.getItem("token"));
-  }, []);
-
+  // 5 下點 logo 進後台（彩蛋）
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault();
     clickCount.current += 1;
@@ -34,16 +30,8 @@ export default function NavBar() {
       </a>
       <div className="flex gap-3 items-center">
         <a href="/pricing" className="px-4 py-2 text-gray-300 hover:text-white transition text-sm">定價</a>
-        {loggedIn ? (
-          <a href="/dashboard" className="px-5 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold transition">
-            進入後台
-          </a>
-        ) : (
-          <>
-            <a href="/login" className="px-4 py-2 text-gray-300 hover:text-white transition text-sm">登入</a>
-            <a href="/register" className="px-5 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold transition">免費註冊</a>
-          </>
-        )}
+        <a href="/login"    className="px-4 py-2 text-gray-300 hover:text-white transition text-sm">登入</a>
+        <a href="/register" className="px-5 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold transition">免費註冊</a>
       </div>
     </nav>
   );

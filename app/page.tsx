@@ -3,7 +3,6 @@ import NavBar from "./components/NavBar";
 export default function Home() {
   return (
     <main className="min-h-screen bg-gray-950 text-white">
-
       <NavBar />
 
       {/* 主視覺 */}

@@ -43,27 +43,31 @@ export default function DashboardPage() {
   const [knowledgeCounts, setKnowledgeCounts] = useState<Record<string, number>>({});
   const [subscription, setSubscription] = useState<Subscription | null>(null);
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const [token, setToken] = useState<string | null>(null);
   const headers = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {
-    if (!token) { router.push("/login"); return; }
-    fetchBots();
-    fetchSubscription();
+    const t = localStorage.getItem("token");
+    if (!t) { router.push("/login"); return; }
+    setToken(t);
+    fetchBots(t);
+    fetchSubscription(t);
   }, []);
 
-  const fetchSubscription = async () => {
+  const fetchSubscription = async (t?: string | null) => {
+    const h = { Authorization: `Bearer ${t ?? token}` };
     try {
-      const res = await axios.get(`${API}/me/subscription`, { headers });
+      const res = await axios.get(`${API}/me/subscription`, { headers: h });
       setSubscription(res.data);
     } catch {
       setSubscription({ plan: "free", bot_slots: 0, max_bots: 1, bots_used: 0, status: "active" });
     }
   };
 
-const fetchBots = async () => {
+  const fetchBots = async (t?: string | null) => {
+    const h = { Authorization: `Bearer ${t ?? token}` };
     try {
-      const res = await axios.get(`${API}/bots`, { headers });
+      const res = await axios.get(`${API}/bots`, { headers: h });
       const botList: Bot[] = res.data;
       setBots(botList);
 
@@ -72,7 +76,7 @@ const fetchBots = async () => {
       await Promise.all(
         botList.map(async (bot) => {
           try {
-            const r = await axios.get(`${API}/bots/${bot.id}/knowledge`, { headers });
+            const r = await axios.get(`${API}/bots/${bot.id}/knowledge`, { headers: h });
             counts[bot.id] = r.data.length;
           } catch {
             counts[bot.id] = 0;
@@ -102,17 +106,11 @@ const fetchBots = async () => {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    router.push("/");
-  };
-
   return (
-    <main className="min-h-screen bg-gray-950 text-white px-4 py-8">
+    <div className="px-4 py-8">
       <div className="max-w-3xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-bold">🤖 我的 Bot</h1>
-          <button onClick={logout} className="text-gray-400 hover:text-white text-sm">登出</button>
+        <div className="flex items-center mb-8">
+          <h1 className="text-2xl font-bold">我的 Bot</h1>
         </div>
 
         {/* Bot 名額狀態列 */}
@@ -233,6 +231,6 @@ const fetchBots = async () => {
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }

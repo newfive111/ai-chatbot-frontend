@@ -1431,13 +1431,98 @@ export default function BotDetailPage() {
               </button>
             </div>
 
-            {/* 📸 Instagram DM 串接 - 即將推出 */}
-            <div className="bg-gray-900 rounded-xl p-6 opacity-60">
+            {/* 📸 Instagram 串接 */}
+            <div className="bg-gray-900 rounded-xl p-6">
               <div className="flex items-center justify-between mb-1">
-                <h2 className="font-semibold">📸 Instagram DM 串接</h2>
-                <span className="text-gray-500 text-xs bg-gray-800 border border-gray-700 px-2 py-0.5 rounded-full">🚧 即將推出</span>
+                <h2 className="font-semibold">📸 Instagram 自動回覆</h2>
+                {instagramConfigured && (
+                  <span className="text-pink-400 text-xs bg-pink-900/40 border border-pink-800 px-2 py-0.5 rounded-full">✅ 已設定</span>
+                )}
               </div>
-              <p className="text-gray-500 text-sm">將 Bot 連接到 Instagram 商業帳號，自動回覆 DM。功能開發中，敬請期待。</p>
+              <p className="text-gray-400 text-sm mb-5">自動回覆 Instagram 貼文<strong className="text-white">留言</strong>與 <strong className="text-white">DM</strong>，需要 Meta 商業帳號。</p>
+
+              {/* 步驟說明 */}
+              <div className="bg-gray-800 rounded-xl p-4 mb-5">
+                <p className="text-sm font-medium text-gray-300 mb-3">📋 設定步驟</p>
+                <ol className="flex flex-col gap-3 text-sm text-gray-400">
+                  <li className="flex items-start gap-2">
+                    <span className="bg-pink-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">1</span>
+                    <span>前往 <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer" className="text-pink-400 hover:text-pink-300 underline transition">Meta for Developers</a> → 建立或選擇 App → 加入「Instagram」產品</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="bg-pink-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">2</span>
+                    <span>Instagram → Settings → 「Generate access token」取得 Page Access Token 後貼到下方</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="bg-pink-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">3</span>
+                    <span>Webhooks → 選「Instagram」→ 「Add Callback URL」貼入下方 Webhook URL，Verify Token 欄位貼入下方的 Verify Token</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="bg-pink-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">4</span>
+                    <span>訂閱欄位勾選 <code className="text-pink-300">messages</code>（DM）與 <code className="text-pink-300">feed</code>（留言）</span>
+                  </li>
+                </ol>
+              </div>
+
+              {/* Page Access Token */}
+              <div className="mb-4">
+                <label className="text-sm text-gray-400 mb-1.5 block">Page Access Token</label>
+                <input
+                  type="password"
+                  placeholder={instagramConfigured ? "（已設定，重新輸入以更新）" : "貼上 Page Access Token..."}
+                  value={instagramPageToken}
+                  onChange={(e) => setInstagramPageToken(e.target.value)}
+                  className="w-full bg-gray-800 px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-pink-500 font-mono text-sm"
+                />
+              </div>
+
+              <button
+                onClick={saveInstagram}
+                disabled={savingInstagram || !instagramPageToken.trim()}
+                className="w-full bg-pink-600 hover:bg-pink-700 py-3 rounded-lg font-semibold transition disabled:opacity-50 mb-5"
+              >
+                {savingInstagram ? "儲存中..." : "💾 儲存 Instagram 設定"}
+              </button>
+
+              {/* Webhook URL */}
+              <div className="mb-4">
+                <label className="text-sm text-gray-400 mb-1.5 block">Webhook URL（貼到 Meta Developers → Webhooks）</label>
+                <div className="flex gap-2">
+                  <code className="flex-1 bg-gray-800 px-4 py-3 rounded-lg text-pink-400 text-xs font-mono overflow-x-auto">
+                    {`https://api.landehui.online/instagram/webhook/${id}`}
+                  </code>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(`https://api.landehui.online/instagram/webhook/${id}`);
+                      setMessage("✅ Webhook URL 已複製");
+                      setTimeout(() => setMessage(""), 2000);
+                    }}
+                    className="shrink-0 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm transition"
+                  >
+                    複製
+                  </button>
+                </div>
+              </div>
+
+              {/* Verify Token */}
+              <div>
+                <label className="text-sm text-gray-400 mb-1.5 block">Verify Token（在 Meta Developers 驗證時使用）</label>
+                <div className="flex gap-2">
+                  <code className="flex-1 bg-gray-800 px-4 py-3 rounded-lg text-yellow-400 text-xs font-mono overflow-x-auto">
+                    {id}
+                  </code>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(id as string);
+                      setMessage("✅ Verify Token 已複製");
+                      setTimeout(() => setMessage(""), 2000);
+                    }}
+                    className="shrink-0 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm transition"
+                  >
+                    複製
+                  </button>
+                </div>
+              </div>
             </div>
 
           </div>

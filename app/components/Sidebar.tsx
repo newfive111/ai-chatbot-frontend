@@ -50,8 +50,8 @@ export default function Sidebar() {
 
         {/* Logo */}
         <div className="flex items-center gap-3 px-5 py-6 border-b border-gray-800">
-          <img src="/logo.png" alt="攬得回" className="w-9 h-9 rounded-xl" />
-          <span className="font-bold text-white text-lg">攬得回</span>
+          <img src="/logo.png" alt="LDH.ai" className="w-9 h-9 rounded-xl" />
+          <span className="font-bold text-white text-lg tracking-tight">LDH<span className="text-blue-400">.ai</span></span>
         </div>
 
         {/* Nav */}

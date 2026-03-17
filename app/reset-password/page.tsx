@@ -38,8 +38,8 @@ export default function ResetPasswordPage() {
       setError("兩次密碼不一致");
       return;
     }
-    if (password.length < 6) {
-      setError("密碼至少需要 6 個字元");
+    if (password.length < 8) {
+      setError("密碼至少需要 8 個字元");
       return;
     }
     setLoading(true);

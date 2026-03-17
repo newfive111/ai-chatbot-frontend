@@ -199,6 +199,7 @@ export default function BotDetailPage() {
   // ── 初始化 ──
   useEffect(() => {
     if (!id) return;
+    if (!token) { router.push("/login"); return; }
     const tested = localStorage.getItem(`tested_${id}`) === "true";
     setChatTested(tested);
     fetchBotSettings();
@@ -543,12 +544,11 @@ export default function BotDetailPage() {
   const doneCount = onboardingSteps.filter((s) => s.done).length;
   const allDone = doneCount === onboardingSteps.length;
 
+  const appOrigin = typeof window !== "undefined" ? window.location.origin : "";
   const embedCode = `<script>
   window.ChatbotConfig = { botId: "${id}" };
 </script>
-<script src="https://ai-chatbot-frontend-38vx81gy4-newfive111s-projects.vercel.app/widget.js" async></script>`;
-
-  const lineWebhookUrl = `https://graceful-patience-production-0170.up.railway.app/line/webhook/${id}`;
+<script src="${appOrigin}/widget.js" async></script>`;
 
   return (
     <>

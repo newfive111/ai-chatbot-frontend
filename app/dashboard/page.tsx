@@ -95,13 +95,12 @@ export default function DashboardPage() {
     if (!newBotName.trim()) return;
     setLoading(true);
     try {
-      await axios.post(`${API}/bots?name=${encodeURIComponent(newBotName)}`, {}, { headers });
-      setNewBotName("");
-      await fetchBots();
+      const res = await axios.post(`${API}/bots?name=${encodeURIComponent(newBotName)}`, {}, { headers });
+      const newBotId = res.data.bot_id;
+      router.push(`/dashboard/bots/${newBotId}`);
     } catch (err: any) {
       const msg = err?.response?.data?.detail || "建立失敗，請稍後再試";
       alert(msg);
-    } finally {
       setLoading(false);
     }
   };

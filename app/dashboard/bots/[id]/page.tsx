@@ -810,8 +810,8 @@ export default function BotDetailPage() {
                   value={systemPrompt}
                   onChange={(e) => { setSystemPrompt(e.target.value); setIsDirty(true); }}
                   placeholder={`例如：你是「${botSettings?.name || "Bot"}」的業務專員，說話風格積極有親和力...`}
-                  rows={5}
-                  className="w-full bg-gray-800 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 resize-none text-sm"
+                  rows={12}
+                  className="w-full bg-gray-800 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 resize-y text-sm min-h-[200px]"
                 />
               </div>
               <p className="text-gray-600 text-xs mb-4">

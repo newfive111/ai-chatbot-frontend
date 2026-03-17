@@ -346,6 +346,32 @@ export default function BotDetailPage() {
     }
   };
 
+  // ── AI 助手：從回覆裡抓 code block（system prompt 提案）──
+  const extractCodeBlock = (text: string): string | null => {
+    const match = text.match(/```[^\n]*\n?([\s\S]+?)```/);
+    const content = match ? match[1].trim() : null;
+    return content && content.length > 80 ? content : null;
+  };
+
+  const [applyingPrompt, setApplyingPrompt] = useState(false);
+
+  const applyProposedPrompt = async (proposed: string) => {
+    if (!confirm("確定要套用此角色設定？")) return;
+    setApplyingPrompt(true);
+    try {
+      await axios.patch(`${API}/bots/${id}`, { system_prompt: proposed }, { headers });
+      setSystemPrompt(proposed);
+      setAssistantMsgs((prev) => [...prev,
+        { role: "assistant", content: "✅ 角色設定已套用！建議到「測試對話」確認效果。" }
+      ]);
+      fetchBotSettings();
+    } catch {
+      alert("套用失敗，請稍後再試");
+    } finally {
+      setApplyingPrompt(false);
+    }
+  };
+
   // ── AI 助手：發送訊息 ──
   const sendAssistantMsg = async (text: string) => {
     if (!text.trim() || assistantLoading) return;
@@ -1834,17 +1860,41 @@ export default function BotDetailPage() {
 
         {/* 訊息列表 */}
         <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
-          {assistantMsgs.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-                msg.role === "user"
-                  ? "bg-blue-600 text-white rounded-br-sm"
-                  : "bg-gray-800 border border-gray-700 text-gray-100 rounded-bl-sm"
-              }`}>
-                {msg.content}
+          {assistantMsgs.map((msg, i) => {
+            const proposed = msg.role === "assistant" ? extractCodeBlock(msg.content) : null;
+            // 把 code block 從顯示文字裡移除，另外顯示
+            const displayText = proposed
+              ? msg.content.replace(/```[^\n]*\n?[\s\S]+?```/, "").trim()
+              : msg.content;
+            return (
+              <div key={i} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
+                <div className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+                  msg.role === "user"
+                    ? "bg-blue-600 text-white rounded-br-sm"
+                    : "bg-gray-800 border border-gray-700 text-gray-100 rounded-bl-sm"
+                }`}>
+                  {displayText}
+                </div>
+                {proposed && (
+                  <div className="max-w-[85%] mt-2 rounded-xl overflow-hidden border border-gray-700">
+                    <div className="bg-gray-900 px-3 py-1.5 text-xs text-gray-400 flex items-center justify-between">
+                      <span>📋 提案角色設定</span>
+                    </div>
+                    <pre className="bg-gray-950 px-3 py-3 text-xs text-gray-300 whitespace-pre-wrap overflow-x-auto max-h-48 overflow-y-auto">
+                      {proposed}
+                    </pre>
+                    <button
+                      onClick={() => applyProposedPrompt(proposed)}
+                      disabled={applyingPrompt}
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs py-2 font-semibold transition disabled:opacity-50"
+                    >
+                      {applyingPrompt ? "套用中..." : "✅ 套用此設定"}
+                    </button>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
           {assistantLoading && (
             <div className="flex justify-start">
               <div className="bg-gray-800 border border-gray-700 text-purple-400 px-3.5 py-2.5 rounded-2xl rounded-bl-sm text-sm flex items-center gap-1.5">

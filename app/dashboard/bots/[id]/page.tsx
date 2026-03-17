@@ -1419,6 +1419,26 @@ export default function BotDetailPage() {
                     <span className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">4</span>
                     <span>儲存後，將下方 Webhook URL 貼到「Messaging API」→「Webhook URL」，並開啟「Use webhook」</span>
                   </li>
+                  <li className="flex items-start gap-2">
+                    <span className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">5</span>
+                    <div className="flex flex-col gap-1.5">
+                      <span>前往 <a href="https://manager.line.biz/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline transition">LINE Official Account Manager</a> → 選擇帳號 → 右上角「設定」→「回應設定」，調整以下三項：</span>
+                      <div className="bg-gray-700 rounded-lg px-3 py-2.5 flex flex-col gap-1 text-xs mt-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-green-400 font-bold">✓</span>
+                          <span className="text-gray-300"><span className="font-medium text-white">聊天</span> → <span className="text-green-400 font-semibold">開啟</span></span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-green-400 font-bold">✓</span>
+                          <span className="text-gray-300"><span className="font-medium text-white">Webhook</span> → <span className="text-green-400 font-semibold">開啟</span></span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-red-400 font-bold">✗</span>
+                          <span className="text-gray-300"><span className="font-medium text-white">自動回應訊息</span> → <span className="text-red-400 font-semibold">關閉</span>（否則 LINE 預設回覆會干擾 Bot）</span>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
                 </ol>
               </div>
 

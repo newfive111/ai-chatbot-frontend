@@ -118,6 +118,38 @@ export default function BotDetailPage() {
   const [newQuickReply, setNewQuickReply] = useState("");
   const [savingGuide, setSavingGuide] = useState(false);
 
+  // 歷史紀錄
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyList, setHistoryList] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+
+  const fetchHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await axios.get(`${API}/bots/${id}/settings-history`, { headers });
+      setHistoryList(res.data);
+    } catch { /* ignore */ } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const restoreSnapshot = async (snapshotId: string) => {
+    if (!confirm("確定要還原到這個版本？目前的設定會被覆蓋（還原前會自動備份）。")) return;
+    setRestoringId(snapshotId);
+    try {
+      await axios.post(`${API}/bots/${id}/settings-history/${snapshotId}/restore`, {}, { headers });
+      setHistoryOpen(false);
+      await fetchBotSettings();
+      setMessage("✅ 已還原到指定版本");
+      setTimeout(() => setMessage(""), 3000);
+    } catch {
+      alert("還原失敗，請稍後再試");
+    } finally {
+      setRestoringId(null);
+    }
+  };
+
   // Quick replies shown in chat (hide after first user message)
   const [showQuickReplies, setShowQuickReplies] = useState(false);
 
@@ -755,13 +787,22 @@ export default function BotDetailPage() {
               <p className="text-gray-600 text-xs mb-4">
                 可用 <code className="bg-gray-800 px-1 rounded text-gray-400">{"{bot_name}"}</code> 代入 Bot 名稱。
               </p>
-              <button
-                onClick={savePrompt}
-                disabled={savingPrompt}
-                className="w-full bg-purple-600 hover:bg-purple-700 py-3 rounded-xl font-semibold transition disabled:opacity-50"
-              >
-                {savingPrompt ? "儲存中..." : "💾 儲存角色設定"}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={savePrompt}
+                  disabled={savingPrompt}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 py-3 rounded-xl font-semibold transition disabled:opacity-50"
+                >
+                  {savingPrompt ? "儲存中..." : "💾 儲存角色設定"}
+                </button>
+                <button
+                  onClick={() => { setHistoryOpen(true); fetchHistory(); }}
+                  className="px-4 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white text-sm transition"
+                  title="歷史紀錄"
+                >
+                  🕐 歷史
+                </button>
+              </div>
             </div>
 
             {/* 開場引導 */}
@@ -1672,6 +1713,54 @@ export default function BotDetailPage() {
 
     {/* ── AI 助手 Floating Widget ── */}
     <>
+      {/* ── 歷史紀錄 Modal ── */}
+      {historyOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-4">
+          <div className="bg-gray-900 rounded-2xl w-full max-w-lg max-h-[80vh] flex flex-col shadow-2xl border border-gray-800">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
+              <h2 className="font-semibold text-white">🕐 設定歷史紀錄</h2>
+              <button onClick={() => setHistoryOpen(false)} className="text-gray-400 hover:text-white text-xl">✕</button>
+            </div>
+            <div className="overflow-y-auto flex-1 px-6 py-4 flex flex-col gap-3">
+              {historyLoading ? (
+                <p className="text-gray-500 text-sm text-center py-8">載入中...</p>
+              ) : historyList.length === 0 ? (
+                <p className="text-gray-500 text-sm text-center py-8">目前沒有歷史紀錄</p>
+              ) : historyList.map((snap) => {
+                const date = new Date(snap.created_at);
+                const label = snap.source === "restore" ? "🔄 還原點" : snap.source === "assistant" ? "🤖 小懶修改" : "✏️ 手動儲存";
+                const preview = snap.system_prompt
+                  ? snap.system_prompt.slice(0, 60) + (snap.system_prompt.length > 60 ? "..." : "")
+                  : "（無角色設定）";
+                return (
+                  <div key={snap.id} className="bg-gray-800 rounded-xl p-4 flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm">
+                        <span>{label}</span>
+                        <span className="text-gray-500 text-xs">
+                          {date.toLocaleDateString("zh-TW")} {date.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => restoreSnapshot(snap.id)}
+                        disabled={restoringId === snap.id}
+                        className="text-xs bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition disabled:opacity-50"
+                      >
+                        {restoringId === snap.id ? "還原中..." : "還原"}
+                      </button>
+                    </div>
+                    <p className="text-gray-400 text-xs leading-relaxed">{preview}</p>
+                    {snap.collect_fields?.length > 0 && (
+                      <p className="text-gray-500 text-xs">收集欄位：{snap.collect_fields.join("、")}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 觸發按鈕 */}
       <button
         onClick={() => setAssistantOpen((o) => !o)}

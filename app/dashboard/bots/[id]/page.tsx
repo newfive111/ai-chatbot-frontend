@@ -362,10 +362,14 @@ export default function BotDetailPage() {
       setAssistantMsgs((prev) => [...prev, { role: "assistant", content: res.data.reply }]);
       // 助手可能已修改設定，刷新
       fetchBotSettings();
-    } catch {
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail || err?.message || "未知錯誤";
+      const isApiKeyErr = detail.includes("API") || detail.includes("api") || err?.response?.status === 401;
       setAssistantMsgs((prev) => [
         ...prev,
-        { role: "assistant", content: "⚠️ 發生錯誤，請確認 Gemini API Key 已在「設定」頁面填入。" }
+        { role: "assistant", content: isApiKeyErr
+            ? "⚠️ 發生錯誤，請確認 Gemini API Key 已在「設定」頁面填入。"
+            : `⚠️ 發生錯誤：${detail}，請稍後再試。` }
       ]);
     }
     setAssistantLoading(false);

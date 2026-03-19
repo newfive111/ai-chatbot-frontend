@@ -37,6 +37,35 @@ interface AnalyticsData {
 
 const API = "/api/proxy";
 
+// 時間 helper：解析 "HH:MM" 字串 ↔ 小時/分鐘
+const parseTime = (t: string) => {
+  const [h = "0", m = "0"] = (t || "00:00").split(":");
+  return { h: parseInt(h, 10), m: parseInt(m, 10) };
+};
+const fmtTime = (h: number, m: number) =>
+  `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+
+// 24 小時制時間選擇器（取代原生 input[type=time]）
+function TimePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { h, m } = parseTime(value);
+  const selClass = "bg-gray-800 px-2 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer";
+  return (
+    <div className="flex items-center gap-1">
+      <select value={h} onChange={(e) => onChange(fmtTime(parseInt(e.target.value), m))} className={selClass}>
+        {Array.from({ length: 24 }, (_, i) => (
+          <option key={i} value={i}>{String(i).padStart(2, "0")}</option>
+        ))}
+      </select>
+      <span className="text-gray-500 font-bold">:</span>
+      <select value={m} onChange={(e) => onChange(fmtTime(h, parseInt(e.target.value)))} className={selClass}>
+        {[0, 15, 30, 45].map((min) => (
+          <option key={min} value={min}>{String(min).padStart(2, "0")}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 const PROMPT_PRESETS = [
   { key: "customer_service", label: "👩‍💼 親切客服", desc: "耐心解答、親切有禮", prompt: "你是「{bot_name}」的客服人員，負責解答客戶問題、處理服務需求，保持親切耐心的態度。" },
   { key: "sales",            label: "💼 積極業務",  desc: "介紹產品、促成合作", prompt: "你是「{bot_name}」的業務專員，負責介紹產品優勢、了解客戶需求、促成合作，使用積極但不強迫的業務話術。" },
@@ -1268,19 +1297,9 @@ export default function BotDetailPage() {
               <div className="mb-4">
                 <label className="text-sm text-gray-400 mb-2 block">上班時間</label>
                 <div className="flex items-center gap-3">
-                  <input
-                    type="time"
-                    value={businessStart}
-                    onChange={(e) => setBusinessStart(e.target.value)}
-                    className="bg-gray-800 px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  />
+                  <TimePicker value={businessStart} onChange={setBusinessStart} />
                   <span className="text-gray-500">～</span>
-                  <input
-                    type="time"
-                    value={businessEnd}
-                    onChange={(e) => setBusinessEnd(e.target.value)}
-                    className="bg-gray-800 px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  />
+                  <TimePicker value={businessEnd} onChange={setBusinessEnd} />
                 </div>
               </div>
 
@@ -1328,11 +1347,9 @@ export default function BotDetailPage() {
               <div className="mb-4">
                 <label className="text-sm text-gray-400 mb-2 block">上班時間</label>
                 <div className="flex items-center gap-3">
-                  <input type="time" value={businessStart} onChange={(e) => setBusinessStart(e.target.value)}
-                    className="bg-gray-800 px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
+                  <TimePicker value={businessStart} onChange={setBusinessStart} />
                   <span className="text-gray-500">～</span>
-                  <input type="time" value={businessEnd} onChange={(e) => setBusinessEnd(e.target.value)}
-                    className="bg-gray-800 px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
+                  <TimePicker value={businessEnd} onChange={setBusinessEnd} />
                 </div>
               </div>
 

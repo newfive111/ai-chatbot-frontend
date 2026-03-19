@@ -110,6 +110,10 @@ export default function BotDetailPage() {
   const [workWeekdays, setWorkWeekdays] = useState<number[]>([1,2,3,4,5]);
   const [savingCalendar, setSavingCalendar] = useState(false);
 
+  // 下班時間自動回應
+  const [offHoursMessage, setOffHoursMessage] = useState("");
+  const [savingOffHours, setSavingOffHours] = useState(false);
+
   // 角色 tab state
   const [systemPrompt, setSystemPrompt] = useState("");
   const [savingPrompt, setSavingPrompt] = useState(false);
@@ -188,6 +192,7 @@ export default function BotDetailPage() {
       setBusinessEnd(data.business_hours?.end || "18:00");
       setWorkWeekdays(data.business_hours?.weekdays || [1,2,3,4,5]);
       setKeywordTriggers(data.keyword_triggers || []);
+      setOffHoursMessage(data.off_hours_message || "");
       setDebounceSeconds(data.debounce_seconds ?? 15);
       setInstagramConfigured(!!data.instagram_page_token);
     } catch (err: any) {
@@ -484,6 +489,14 @@ export default function BotDetailPage() {
     await axios.patch(`${API}/bots/${id}`, { debounce_seconds: debounceSeconds }, { headers });
     setMessage("✅ 防抖設定已儲存");
     setSavingDebounce(false);
+    setTimeout(() => setMessage(""), 3000);
+  };
+
+  const saveOffHours = async () => {
+    setSavingOffHours(true);
+    await axios.patch(`${API}/bots/${id}`, { off_hours_message: offHoursMessage }, { headers });
+    setMessage("✅ 下班時間設定已儲存");
+    setSavingOffHours(false);
     setTimeout(() => setMessage(""), 3000);
   };
 
@@ -1298,6 +1311,30 @@ export default function BotDetailPage() {
                 className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition disabled:opacity-50"
               >
                 {savingCalendar ? "儲存中..." : "💾 儲存預約設定"}
+              </button>
+            </div>
+
+            {/* 🌙 下班時間自動回應 */}
+            <div className="bg-gray-900 rounded-xl p-6">
+              <h2 className="font-semibold mb-1">🌙 下班時間自動回應</h2>
+              <p className="text-gray-400 text-sm mb-4">
+                非上班時間收到訊息時，Bot 會先回覆這則訊息，之後繼續正常服務。<br />
+                <span className="text-gray-500">上班時間與上班日請在上方「預約系統」設定中調整。</span>
+              </p>
+              <textarea
+                value={offHoursMessage}
+                onChange={(e) => setOffHoursMessage(e.target.value)}
+                placeholder="例：目前非上班時間（09:00-18:00），您的訊息已收到，明天將盡快與您聯繫 🙏"
+                rows={3}
+                className="w-full bg-gray-800 rounded-lg px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              />
+              <p className="text-gray-600 text-xs mt-2 mb-4">留空則不啟用此功能</p>
+              <button
+                onClick={saveOffHours}
+                disabled={savingOffHours}
+                className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition disabled:opacity-50"
+              >
+                {savingOffHours ? "儲存中..." : "💾 儲存設定"}
               </button>
             </div>
 

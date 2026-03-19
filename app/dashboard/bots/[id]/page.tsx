@@ -77,6 +77,8 @@ export default function BotDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const assistantScrollRef = useRef<HTMLDivElement>(null);
 
   const [tab, setTab] = useState<"knowledge" | "persona" | "chat" | "embed" | "settings" | "analytics">("knowledge");
 
@@ -248,26 +250,24 @@ export default function BotDetailPage() {
   }, [tab]);
 
   // ── 自動捲動到底部 ──
-  useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatMessages]);
+  const scrollChatToBottom = () => {
+    if (chatScrollRef.current) chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+  };
+  const scrollAssistantToBottom = () => {
+    if (assistantScrollRef.current) assistantScrollRef.current.scrollTop = assistantScrollRef.current.scrollHeight;
+  };
 
-  useEffect(() => {
-    assistantBottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [assistantMsgs]);
+  useEffect(() => { scrollChatToBottom(); }, [chatMessages]);
+  useEffect(() => { scrollAssistantToBottom(); }, [assistantMsgs]);
 
   // ── 切換回 chat tab 時捲到底部 ──
   useEffect(() => {
-    if (tab === "chat") {
-      setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: "instant" }), 50);
-    }
+    if (tab === "chat") setTimeout(scrollChatToBottom, 50);
   }, [tab]);
 
   // ── AI 助手 widget 開啟時捲到底部 ──
   useEffect(() => {
-    if (assistantOpen) {
-      setTimeout(() => assistantBottomRef.current?.scrollIntoView({ behavior: "instant" }), 100);
-    }
+    if (assistantOpen) setTimeout(scrollAssistantToBottom, 100);
   }, [assistantOpen]);
 
   // ── 知識庫 ──
@@ -982,7 +982,7 @@ export default function BotDetailPage() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
+            <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
               {chatMessages.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center">
                   <p className="text-gray-500 text-sm">傳送訊息開始測試 Bot 👇</p>
@@ -1969,7 +1969,7 @@ export default function BotDetailPage() {
         )}
 
         {/* 訊息列表 */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
+        <div ref={assistantScrollRef} className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
           {assistantMsgs.map((msg, i) => {
             const proposed = msg.role === "assistant" ? extractCodeBlock(msg.content) : null;
             // 把 code block 從顯示文字裡移除，另外顯示

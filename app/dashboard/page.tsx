@@ -22,6 +22,54 @@ interface Subscription {
 
 const API = "/api/proxy";
 
+const BOT_TEMPLATES = [
+  {
+    id: "blank",
+    name: "空白",
+    icon: "🆕",
+    desc: "從零開始自訂",
+    system_prompt: "",
+    collect_fields: [],
+    welcome_message: "",
+  },
+  {
+    id: "clinic",
+    name: "診所/醫美",
+    icon: "🏥",
+    desc: "預約掛號、諮詢",
+    system_prompt: "你是一位親切的診所客服助理，負責協助患者預約掛號與諮詢。請用繁體中文回覆，語氣溫和有禮，主動詢問預約所需資訊。",
+    collect_fields: ["姓名", "電話", "預約日期", "項目"],
+    welcome_message: "您好！歡迎聯繫我們的診所，請問有什麼可以幫助您的？😊",
+  },
+  {
+    id: "beauty",
+    name: "美容美髮",
+    icon: "💇",
+    desc: "預約造型、收集需求",
+    system_prompt: "你是一位專業的美容美髮沙龍客服，負責協助客人預約服務。請用繁體中文回覆，語氣活潑友善，介紹服務並收集預約資訊。",
+    collect_fields: ["姓名", "電話", "預約日期", "服務項目"],
+    welcome_message: "嗨！歡迎來到我們的沙龍 💆‍♀️ 想預約什麼服務呢？",
+  },
+  {
+    id: "realestate",
+    name: "房仲/裝潢",
+    icon: "🏠",
+    desc: "物件詢問、買方需求",
+    system_prompt: "你是一位專業的房地產客服顧問，負責瞭解客戶的購屋或裝潢需求，並協助安排看屋或估價。請用繁體中文回覆，語氣專業有信任感。",
+    collect_fields: ["姓名", "電話", "預算", "需求"],
+    welcome_message: "您好！歡迎洽詢，請問您在尋找什麼樣的物件或服務？🏡",
+  },
+  {
+    id: "insurance",
+    name: "保險/理財",
+    icon: "💼",
+    desc: "保險諮詢、客戶需求",
+    system_prompt: "你是一位友善的保險理財顧問助理，負責初步瞭解客戶的保障需求。請用繁體中文回覆，語氣專業令人安心，收集基本資訊後安排後續諮詢。",
+    collect_fields: ["姓名", "電話", "年齡", "需求"],
+    welcome_message: "您好！歡迎諮詢保險規劃，我來幫您瞭解最適合的保障方案 😊",
+  },
+];
+
 function getBotProgress(bot: Bot, knowledgeCounts: Record<string, number>): number {
   let done = 1; // Bot 建立
   if ((knowledgeCounts[bot.id] ?? 0) > 0) done++;
@@ -45,6 +93,7 @@ export default function DashboardPage() {
 
   const [token, setToken] = useState<string | null>(null);
   const headers = { Authorization: `Bearer ${token}` };
+  const [selectedTemplate, setSelectedTemplate] = useState("blank");
 
   useEffect(() => {
     const t = localStorage.getItem("token");
@@ -95,7 +144,11 @@ export default function DashboardPage() {
     if (!newBotName.trim()) return;
     setLoading(true);
     try {
-      const res = await axios.post(`${API}/bots?name=${encodeURIComponent(newBotName)}`, {}, { headers });
+      const tmpl = BOT_TEMPLATES.find((t) => t.id === selectedTemplate) ?? BOT_TEMPLATES[0];
+      const body = tmpl.id === "blank"
+        ? {}
+        : { system_prompt: tmpl.system_prompt, collect_fields: tmpl.collect_fields, welcome_message: tmpl.welcome_message };
+      const res = await axios.post(`${API}/bots?name=${encodeURIComponent(newBotName)}`, body, { headers });
       const newBotId = res.data.bot_id;
       router.push(`/dashboard/bots/${newBotId}`);
     } catch (err: any) {
@@ -142,6 +195,29 @@ export default function DashboardPage() {
             🎉 付款成功！訂閱已啟用，功能即刻生效。
           </div>
         )}
+
+        {/* 範本選擇 */}
+        <div className="mb-4">
+          <p className="text-sm text-gray-400 mb-3">選擇範本（可之後修改）</p>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+            {BOT_TEMPLATES.map((tmpl) => (
+              <button
+                key={tmpl.id}
+                type="button"
+                onClick={() => setSelectedTemplate(tmpl.id)}
+                className={`flex flex-col items-center gap-1 px-2 py-3 rounded-xl text-center transition border ${
+                  selectedTemplate === tmpl.id
+                    ? "border-blue-500 bg-blue-900/30 text-white"
+                    : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-white"
+                }`}
+              >
+                <span className="text-2xl">{tmpl.icon}</span>
+                <span className="text-xs font-medium leading-tight">{tmpl.name}</span>
+                <span className="text-[10px] text-gray-500 leading-tight">{tmpl.desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* 建立新 Bot */}
         <form onSubmit={createBot} className="flex gap-3 mb-8">

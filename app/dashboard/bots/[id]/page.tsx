@@ -494,7 +494,10 @@ export default function BotDetailPage() {
 
   const saveOffHours = async () => {
     setSavingOffHours(true);
-    await axios.patch(`${API}/bots/${id}`, { off_hours_message: offHoursMessage }, { headers });
+    await axios.patch(`${API}/bots/${id}`, {
+      off_hours_message: offHoursMessage,
+      business_hours: { start: businessStart, end: businessEnd, weekdays: workWeekdays },
+    }, { headers });
     setMessage("✅ 下班時間設定已儲存");
     setSavingOffHours(false);
     setTimeout(() => setMessage(""), 3000);
@@ -1317,18 +1320,51 @@ export default function BotDetailPage() {
             {/* 🌙 下班時間自動回應 */}
             <div className="bg-gray-900 rounded-xl p-6">
               <h2 className="font-semibold mb-1">🌙 下班時間自動回應</h2>
-              <p className="text-gray-400 text-sm mb-4">
-                非上班時間收到訊息時，Bot 會先回覆這則訊息，之後繼續正常服務。<br />
-                <span className="text-gray-500">上班時間與上班日請在上方「預約系統」設定中調整。</span>
+              <p className="text-gray-400 text-sm mb-5">
+                非上班時間收到訊息，資料收集完成後 Bot 會附上這則通知。留空則不啟用。
               </p>
-              <textarea
-                value={offHoursMessage}
-                onChange={(e) => setOffHoursMessage(e.target.value)}
-                placeholder="例：目前非上班時間（09:00-18:00），您的訊息已收到，明天將盡快與您聯繫 🙏"
-                rows={3}
-                className="w-full bg-gray-800 rounded-lg px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              />
-              <p className="text-gray-600 text-xs mt-2 mb-4">留空則不啟用此功能</p>
+
+              {/* 上班時間 */}
+              <div className="mb-4">
+                <label className="text-sm text-gray-400 mb-2 block">上班時間</label>
+                <div className="flex items-center gap-3">
+                  <input type="time" value={businessStart} onChange={(e) => setBusinessStart(e.target.value)}
+                    className="bg-gray-800 px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
+                  <span className="text-gray-500">～</span>
+                  <input type="time" value={businessEnd} onChange={(e) => setBusinessEnd(e.target.value)}
+                    className="bg-gray-800 px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
+                </div>
+              </div>
+
+              {/* 上班日 */}
+              <div className="mb-5">
+                <label className="text-sm text-gray-400 mb-2 block">上班日</label>
+                <div className="flex gap-2">
+                  {([["一",1],["二",2],["三",3],["四",4],["五",5],["六",6],["日",7]] as [string,number][]).map(([label, day]) => (
+                    <button key={day}
+                      onClick={() => setWorkWeekdays((prev) =>
+                        prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()
+                      )}
+                      className={`w-9 h-9 rounded-full text-sm font-medium transition ${
+                        workWeekdays.includes(day) ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-500 hover:text-white"
+                      }`}
+                    >{label}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 下班訊息 */}
+              <div className="mb-4">
+                <label className="text-sm text-gray-400 mb-2 block">下班通知訊息</label>
+                <textarea
+                  value={offHoursMessage}
+                  onChange={(e) => setOffHoursMessage(e.target.value)}
+                  placeholder="例：目前非上班時間，您的訊息已收到，上班時間將盡快與您聯繫 🙏"
+                  rows={3}
+                  className="w-full bg-gray-800 rounded-lg px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+              </div>
+
               <button
                 onClick={saveOffHours}
                 disabled={savingOffHours}

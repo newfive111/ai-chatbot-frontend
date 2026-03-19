@@ -21,6 +21,8 @@ interface BotSettings {
   business_hours?: { start: string; end: string; weekdays: number[] };
   keyword_triggers?: { keyword: string; reply: string }[];
   debounce_seconds?: number;
+  instagram_account_id?: string;
+  facebook_page_id?: string;
 }
 
 interface AnalyticsData {
@@ -1664,6 +1666,19 @@ export default function BotDetailPage() {
               >
                 {savingInstagram ? "儲存中..." : "💾 儲存 Instagram 設定"}
               </button>
+
+              {/* 綁定狀態 */}
+              {botSettings && (botSettings.instagram_account_id || botSettings.facebook_page_id) && (
+                <div className="mb-5 p-3 bg-green-900/20 border border-green-800/50 rounded-lg text-xs">
+                  <p className="text-green-400 font-semibold mb-1">✅ 已綁定 Instagram 帳號</p>
+                  {botSettings.instagram_account_id && (
+                    <p className="text-gray-400">IG Business Account ID: <span className="text-green-300 font-mono">{botSettings.instagram_account_id}</span></p>
+                  )}
+                  {botSettings.facebook_page_id && (
+                    <p className="text-gray-400">Facebook Page ID: <span className="text-green-300 font-mono">{botSettings.facebook_page_id}</span></p>
+                  )}
+                </div>
+              )}
 
               {/* Webhook URL */}
               <div className="mb-4">

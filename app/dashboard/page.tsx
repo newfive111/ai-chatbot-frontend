@@ -196,31 +196,8 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* 範本選擇 */}
-        <div className="mb-4">
-          <p className="text-sm text-gray-400 mb-3">選擇範本（可之後修改）</p>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-            {BOT_TEMPLATES.map((tmpl) => (
-              <button
-                key={tmpl.id}
-                type="button"
-                onClick={() => setSelectedTemplate(tmpl.id)}
-                className={`flex flex-col items-center gap-1 px-2 py-3 rounded-xl text-center transition border ${
-                  selectedTemplate === tmpl.id
-                    ? "border-blue-500 bg-blue-900/30 text-white"
-                    : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-white"
-                }`}
-              >
-                <span className="text-2xl">{tmpl.icon}</span>
-                <span className="text-xs font-medium leading-tight">{tmpl.name}</span>
-                <span className="text-[10px] text-gray-500 leading-tight">{tmpl.desc}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* 建立新 Bot */}
-        <form onSubmit={createBot} className="flex gap-3 mb-8">
+        <form onSubmit={createBot} className="flex gap-3 mb-4">
           <input
             type="text"
             placeholder="Bot 名稱（例如：台灣科技客服）"
@@ -236,6 +213,29 @@ export default function DashboardPage() {
             + 建立
           </button>
         </form>
+
+        {/* 範本選擇 */}
+        <div className="mb-8">
+          <p className="text-xs text-gray-500 mb-2">選擇範本（可之後修改）</p>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+            {BOT_TEMPLATES.map((tmpl) => (
+              <button
+                key={tmpl.id}
+                type="button"
+                onClick={() => setSelectedTemplate(tmpl.id)}
+                className={`cursor-pointer flex flex-col items-center gap-1 px-2 py-3 rounded-xl text-center transition border ${
+                  selectedTemplate === tmpl.id
+                    ? "border-blue-500 bg-blue-900/30 text-white"
+                    : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-500 hover:text-white"
+                }`}
+              >
+                <span className="text-2xl">{tmpl.icon}</span>
+                <span className="text-xs font-medium leading-tight">{tmpl.name}</span>
+                <span className="text-[10px] text-gray-500 leading-tight">{tmpl.desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Bot 列表 */}
         {bots.length === 0 ? (

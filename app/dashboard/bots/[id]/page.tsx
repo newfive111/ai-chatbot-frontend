@@ -49,7 +49,7 @@ export default function BotDetailPage() {
   const router = useRouter();
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
-  const [tab, setTab] = useState<"knowledge" | "persona" | "chat" | "embed" | "settings" | "analytics" | "conversations">("knowledge");
+  const [tab, setTab] = useState<"knowledge" | "persona" | "chat" | "embed" | "settings" | "analytics">("knowledge");
 
   // AI 助手 floating widget
   const [assistantOpen, setAssistantOpen] = useState(false);
@@ -63,11 +63,6 @@ export default function BotDetailPage() {
   // Analytics
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
-
-  // 對話紀錄
-  const [conversations, setConversations] = useState<{ id: string; question: string; answer: string; created_at: string }[]>([]);
-  const [convLoading, setConvLoading] = useState(false);
-  const [expandedConvId, setExpandedConvId] = useState<string | null>(null);
   const [faqText, setFaqText] = useState("");
   const [question, setQuestion] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -252,7 +247,6 @@ export default function BotDetailPage() {
   useEffect(() => {
     if (tab === "knowledge") fetchChunks();
     if (tab === "analytics") fetchAnalytics();
-    if (tab === "conversations") fetchConversations();
   }, [tab]);
 
   // ── 未儲存變更警告 ──
@@ -506,19 +500,6 @@ export default function BotDetailPage() {
     setAnalyticsLoading(false);
   };
 
-  // ── 對話紀錄：載入 ──
-  const fetchConversations = async () => {
-    if (!id) return;
-    setConvLoading(true);
-    try {
-      const res = await axios.get(`${API}/bots/${id}/conversations`, { headers });
-      setConversations(res.data || []);
-    } catch (err) {
-      console.error("Conversations fetch failed", err);
-    }
-    setConvLoading(false);
-  };
-
   // ── Settings：儲存 Sheet ──
   const saveSheet = async () => {
     setSavingSheet(true);
@@ -643,19 +624,18 @@ export default function BotDetailPage() {
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6 border-b border-gray-800 overflow-x-auto">
-          {(["knowledge", "persona", "chat", "embed", "settings", "analytics", "conversations"] as const).map((t) => (
+          {(["knowledge", "persona", "chat", "embed", "settings", "analytics"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={`shrink-0 px-4 py-2 text-sm font-medium transition border-b-2 -mb-px ${
                 tab === t
                   ? t === "analytics" ? "border-yellow-500 text-white"
-                  : t === "conversations" ? "border-purple-500 text-white"
                   : "border-blue-500 text-white"
                   : "border-transparent text-gray-500 hover:text-white"
               }`}
             >
-              {{ knowledge: "📚 知識庫", persona: "🤖 角色", chat: "💬 測試對話", embed: "🔗 嵌入代碼", settings: "⚙️ 設定", analytics: "📊 數據", conversations: "🗂️ 對話紀錄" }[t]}
+              {{ knowledge: "📚 知識庫", persona: "🤖 角色", chat: "💬 測試對話", embed: "🔗 嵌入代碼", settings: "⚙️ 設定", analytics: "📊 數據" }[t]}
             </button>
           ))}
         </div>
@@ -1774,70 +1754,6 @@ export default function BotDetailPage() {
               </>
             ) : (
               <div className="text-center text-gray-500 py-20">載入失敗，請重試</div>
-            )}
-          </div>
-        )}
-
-        {/* ── 對話紀錄 Tab ── */}
-        {tab === "conversations" && (
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">🗂️ 對話紀錄</h2>
-              <button
-                onClick={fetchConversations}
-                className="text-xs text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-lg transition"
-              >
-                🔄 重新載入
-              </button>
-            </div>
-
-            {convLoading ? (
-              <div className="text-center text-gray-500 py-20">載入中...</div>
-            ) : conversations.length === 0 ? (
-              <div className="text-center text-gray-500 py-20">
-                <div className="text-4xl mb-3">💬</div>
-                <p>還沒有對話紀錄</p>
-                <p className="text-xs mt-1 text-gray-600">客戶透過網站嵌入或 LINE 傳訊後，紀錄會出現在這裡</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                <p className="text-xs text-gray-500">共 {conversations.length} 筆（最近 100 筆）</p>
-                {conversations.map((conv) => {
-                  const isExpanded = expandedConvId === conv.id;
-                  const date = new Date(conv.created_at);
-                  const dateStr = date.toLocaleDateString("zh-TW", { month: "2-digit", day: "2-digit" });
-                  const timeStr = date.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" });
-                  return (
-                    <div
-                      key={conv.id}
-                      className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden"
-                    >
-                      {/* 問題列（點擊展開） */}
-                      <button
-                        className="w-full flex items-start gap-3 px-4 py-3 hover:bg-gray-800/50 transition text-left"
-                        onClick={() => setExpandedConvId(isExpanded ? null : conv.id)}
-                      >
-                        <span className="text-blue-400 text-sm mt-0.5 shrink-0">👤</span>
-                        <span className="flex-1 text-sm text-gray-200 line-clamp-2">{conv.question}</span>
-                        <span className="text-gray-600 text-xs shrink-0 ml-2">
-                          {dateStr} {timeStr}
-                        </span>
-                        <span className="text-gray-600 text-xs shrink-0 ml-1">
-                          {isExpanded ? "▲" : "▼"}
-                        </span>
-                      </button>
-
-                      {/* 展開：顯示 AI 回答 */}
-                      {isExpanded && (
-                        <div className="border-t border-gray-800 px-4 py-3 flex items-start gap-3 bg-gray-800/30">
-                          <span className="text-purple-400 text-sm mt-0.5 shrink-0">🤖</span>
-                          <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{conv.answer}</p>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
             )}
           </div>
         )}

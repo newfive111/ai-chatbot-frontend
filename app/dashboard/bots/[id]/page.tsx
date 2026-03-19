@@ -1902,18 +1902,16 @@ export default function BotDetailPage() {
       )}
 
       {/* 觸發按鈕 */}
-      <button
-        onClick={() => setAssistantOpen((o) => !o)}
-        className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-full shadow-2xl font-semibold text-sm transition-all duration-200 ${
-          assistantOpen
-            ? "bg-purple-700 hover:bg-purple-800 text-white"
-            : "bg-purple-600 hover:bg-purple-700 text-white"
-        }`}
-        title="AI 設定助手「小懶」"
-      >
-        <span className="text-base">{assistantOpen ? "✕" : "✨"}</span>
-        {!assistantOpen && <span>小懶</span>}
-      </button>
+      {!assistantOpen && (
+        <button
+          onClick={() => setAssistantOpen(true)}
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-full shadow-2xl font-semibold text-sm transition-all duration-200 bg-purple-600 hover:bg-purple-700 text-white"
+          title="AI 設定助手「小懶」"
+        >
+          <span className="text-base">✨</span>
+          <span>小懶</span>
+        </button>
+      )}
 
       {/* 側邊 Panel */}
       <div

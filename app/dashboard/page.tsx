@@ -158,6 +158,16 @@ export default function DashboardPage() {
     }
   };
 
+  const deleteBot = async (botId: string, botName: string) => {
+    if (!confirm(`確定要刪除「${botName}」嗎？此操作無法復原。`)) return;
+    try {
+      await axios.delete(`${API}/bots/${botId}`, { headers });
+      setBots((prev) => prev.filter((b) => b.id !== botId));
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || "刪除失敗");
+    }
+  };
+
   return (
     <div className="px-4 py-8">
       <div className="max-w-3xl mx-auto">
@@ -252,11 +262,10 @@ export default function DashboardPage() {
               return (
                 <div
                   key={bot.id}
-                  onClick={() => router.push(`/dashboard/bots/${bot.id}`)}
-                  className="bg-gray-900 rounded-xl p-5 cursor-pointer hover:bg-gray-800 transition"
+                  className="bg-gray-900 rounded-xl p-5 hover:bg-gray-800 transition"
                 >
                   <div className="flex justify-between items-start mb-3">
-                    <div>
+                    <div onClick={() => router.push(`/dashboard/bots/${bot.id}`)} className="flex-1 cursor-pointer">
                       <div className="flex items-center gap-2 mb-0.5">
                         <h2 className="font-semibold text-lg">{bot.name}</h2>
                         {bot.plan === "paid" ? (
@@ -267,21 +276,43 @@ export default function DashboardPage() {
                       </div>
                       <p className="text-gray-500 text-xs">ID: {bot.id}</p>
                     </div>
-                    <div className="flex flex-col items-end gap-1.5">
-                      {isSetupDone ? (
-                        <span className="text-xs bg-green-900 text-green-400 px-2 py-1 rounded-full">✅ 已就緒</span>
-                      ) : (
-                        <span className="text-xs bg-yellow-900/50 text-yellow-400 px-2 py-1 rounded-full">⚙️ 設定中</span>
-                      )}
-                      {bot.plan === "free" && (
-                        <a
-                          href="/pricing"
-                          onClick={e => e.stopPropagation()}
-                          className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded-full transition"
-                        >
-                          ⚡ 啟用完整功能
-                        </a>
-                      )}
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col items-end gap-1.5">
+                        {isSetupDone ? (
+                          <span className="text-xs bg-green-900 text-green-400 px-2 py-1 rounded-full">✅ 已就緒</span>
+                        ) : (
+                          <span className="text-xs bg-yellow-900/50 text-yellow-400 px-2 py-1 rounded-full">⚙️ 設定中</span>
+                        )}
+                        {bot.plan === "free" && (
+                          <a
+                            href="/pricing"
+                            onClick={e => e.stopPropagation()}
+                            className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded-full transition"
+                          >
+                            ⚡ 啟用完整功能
+                          </a>
+                        )}
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/dashboard/bots/${bot.id}`);
+                        }}
+                        className="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white px-3 py-1.5 rounded-lg transition"
+                        title="編輯"
+                      >
+                        ✏️ 編輯
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteBot(bot.id, bot.name);
+                        }}
+                        className="text-xs bg-red-900/50 hover:bg-red-800 text-red-400 hover:text-red-300 px-3 py-1.5 rounded-lg transition"
+                        title="刪除"
+                      >
+                        🗑️ 刪除
+                      </button>
                     </div>
                   </div>
 

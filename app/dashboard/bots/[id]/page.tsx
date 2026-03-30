@@ -23,6 +23,7 @@ interface BotSettings {
   debounce_seconds?: number;
   instagram_account_id?: string;
   facebook_page_id?: string;
+  enable_ziwei?: boolean;
 }
 
 interface AnalyticsData {
@@ -128,6 +129,9 @@ export default function BotDetailPage() {
   const [savingLine, setSavingLine] = useState(false);
   const [lineConfigured, setLineConfigured] = useState(false);
 
+  // 紫微斗數
+  const [enableZiwei, setEnableZiwei] = useState(false);
+
   // Instagram
   const [debounceSeconds, setDebounceSeconds] = useState(15);
   const [savingDebounce, setSavingDebounce] = useState(false);
@@ -227,6 +231,7 @@ export default function BotDetailPage() {
       setKeywordTriggers(data.keyword_triggers || []);
       setOffHoursMessage(data.off_hours_message || "");
       setDebounceSeconds(data.debounce_seconds ?? 15);
+      setEnableZiwei(data.enable_ziwei || false);
       setInstagramConfigured(!!data.instagram_page_token);
     } catch (err: any) {
       console.error("[BotDetail] 載入 Bot 設定失敗", err?.response?.status, err?.message);
@@ -453,7 +458,7 @@ export default function BotDetailPage() {
   // ── 角色 tab：儲存 System Prompt ──
   const savePrompt = async () => {
     setSavingPrompt(true);
-    await axios.patch(`${API}/bots/${id}`, { system_prompt: systemPrompt }, { headers });
+    await axios.patch(`${API}/bots/${id}`, { system_prompt: systemPrompt, enable_ziwei: enableZiwei }, { headers });
     setMessage("✅ 角色設定已儲存");
     setSavingPrompt(false);
     setIsDirty(false);
@@ -864,6 +869,17 @@ export default function BotDetailPage() {
               <p className="text-gray-600 text-xs mb-4">
                 可用 <code className="bg-gray-800 px-1 rounded text-gray-400">{"{bot_name}"}</code> 代入 Bot 名稱。
               </p>
+              {/* 紫微斗數開關 */}
+              <label className="flex items-center gap-3 mb-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={enableZiwei}
+                  onChange={(e) => { setEnableZiwei(e.target.checked); setIsDirty(true); }}
+                  className="w-5 h-5 rounded bg-gray-800 border-gray-600 text-purple-500 focus:ring-purple-500"
+                />
+                <span className="text-sm text-gray-300">🔮 啟用紫微斗數排盤（Bot 可自動排出命盤並解讀）</span>
+              </label>
+
               <div className="flex gap-2">
                 <button
                   onClick={savePrompt}

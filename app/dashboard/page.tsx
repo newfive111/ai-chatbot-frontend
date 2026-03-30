@@ -72,6 +72,7 @@ const BOT_TEMPLATES = [
     id: "fortune",
     name: "紫微算命",
     icon: "🔮",
+    hidden: true,
     desc: "紫微斗數命盤解讀",
     system_prompt: `你是「天機老師」，一位精通紫微斗數的命理大師。語氣神秘而溫暖，用繁體中文回覆。
 
@@ -261,7 +262,7 @@ export default function DashboardPage() {
         <div className="mb-8">
           <p className="text-xs text-gray-500 mb-2">選擇範本（可之後修改）</p>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-            {BOT_TEMPLATES.map((tmpl) => (
+            {BOT_TEMPLATES.filter((t) => !(t as any).hidden).map((tmpl) => (
               <button
                 key={tmpl.id}
                 type="button"

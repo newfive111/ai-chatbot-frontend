@@ -329,13 +329,19 @@ export default function BotDetailPage() {
   const submitFAQ = async (e: React.FormEvent) => {
     e.preventDefault();
     setUploading(true);
-    await axios.post(`${API}/bots/${id}/faq`, { content: faqText }, { headers });
-    setFaqText("");
-    setMessage("✅ FAQ 已加入知識庫");
-    await fetchChunks();
-    setBotSettings((prev) => prev ? { ...prev } : prev); // trigger re-render for checklist
-    setUploading(false);
-    setTimeout(() => setMessage(""), 3000);
+    try {
+      await axios.post(`${API}/bots/${id}/faq`, { content: faqText }, { headers });
+      setFaqText("");
+      setMessage("✅ FAQ 已加入知識庫");
+      await fetchChunks();
+      setBotSettings((prev) => prev ? { ...prev } : prev);
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail || "加入失敗，請稍後再試";
+      setMessage(`❌ ${detail}`);
+    } finally {
+      setUploading(false);
+      setTimeout(() => setMessage(""), 4000);
+    }
   };
 
   // ── 測試對話 ──

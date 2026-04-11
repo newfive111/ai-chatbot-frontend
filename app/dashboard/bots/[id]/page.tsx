@@ -452,97 +452,137 @@ export default function BotDetailPage() {
   // ── Settings：儲存 API Key ──
   const saveApiKey = async () => {
     setSavingKey(true);
-    await axios.patch(`${API}/bots/${id}`, { anthropic_api_key: apiKey }, { headers });
-    setBotSettings((prev) => prev ? { ...prev, has_api_key: true } : prev);
-    setMessage("✅ API Key 已儲存");
-    setApiKey("");
-    setSavingKey(false);
-    setIsDirty(false);
-    setTimeout(() => setMessage(""), 3000);
+    try {
+      await axios.patch(`${API}/bots/${id}`, { anthropic_api_key: apiKey }, { headers });
+      setBotSettings((prev) => prev ? { ...prev, has_api_key: true } : prev);
+      setMessage("✅ API Key 已儲存");
+      setApiKey("");
+      setIsDirty(false);
+    } catch (err: any) {
+      setMessage(`❌ ${err?.response?.data?.detail || "儲存失敗，請稍後再試"}`);
+    } finally {
+      setSavingKey(false);
+      setTimeout(() => setMessage(""), 3000);
+    }
   };
 
   // ── 角色 tab：儲存 System Prompt ──
   const savePrompt = async () => {
     setSavingPrompt(true);
-    await axios.patch(`${API}/bots/${id}`, { system_prompt: systemPrompt, enable_ziwei: enableZiwei }, { headers });
-    setMessage("✅ 角色設定已儲存");
-    setSavingPrompt(false);
-    setIsDirty(false);
-    setTimeout(() => setMessage(""), 3000);
+    try {
+      await axios.patch(`${API}/bots/${id}`, { system_prompt: systemPrompt, enable_ziwei: enableZiwei }, { headers });
+      setMessage("✅ 角色設定已儲存");
+      setIsDirty(false);
+    } catch (err: any) {
+      setMessage(`❌ ${err?.response?.data?.detail || "儲存失敗，請稍後再試"}`);
+    } finally {
+      setSavingPrompt(false);
+      setTimeout(() => setMessage(""), 3000);
+    }
   };
 
   // ── 角色 tab：儲存引導設定 ──
   const saveGuide = async () => {
     setSavingGuide(true);
-    await axios.patch(`${API}/bots/${id}`, {
-      welcome_message: welcomeMessage,
-      quick_replies: quickReplies.map((label) => ({ label })),
-    }, { headers });
-    setBotSettings((prev) => prev ? { ...prev, welcome_message: welcomeMessage } : prev);
-    setMessage("✅ 引導設定已儲存");
-    setSavingGuide(false);
-    setIsDirty(false);
-    setTimeout(() => setMessage(""), 3000);
+    try {
+      await axios.patch(`${API}/bots/${id}`, {
+        welcome_message: welcomeMessage,
+        quick_replies: quickReplies.map((label) => ({ label })),
+      }, { headers });
+      setBotSettings((prev) => prev ? { ...prev, welcome_message: welcomeMessage } : prev);
+      setMessage("✅ 引導設定已儲存");
+      setIsDirty(false);
+    } catch (err: any) {
+      setMessage(`❌ ${err?.response?.data?.detail || "儲存失敗，請稍後再試"}`);
+    } finally {
+      setSavingGuide(false);
+      setTimeout(() => setMessage(""), 3000);
+    }
   };
 
   // ── Settings：儲存預約系統 ──
   const saveCalendar = async () => {
     setSavingCalendar(true);
-    await axios.patch(`${API}/bots/${id}`, {
-      calendar_id: calendarId || null,
-      slot_duration_minutes: slotDuration,
-      business_hours: { start: businessStart, end: businessEnd, weekdays: workWeekdays },
-    }, { headers });
-    setMessage("✅ 預約系統設定已儲存");
-    setSavingCalendar(false);
-    setTimeout(() => setMessage(""), 3000);
+    try {
+      await axios.patch(`${API}/bots/${id}`, {
+        calendar_id: calendarId || null,
+        slot_duration_minutes: slotDuration,
+        business_hours: { start: businessStart, end: businessEnd, weekdays: workWeekdays },
+      }, { headers });
+      setMessage("✅ 預約系統設定已儲存");
+    } catch (err: any) {
+      setMessage(`❌ ${err?.response?.data?.detail || "儲存失敗，請稍後再試"}`);
+    } finally {
+      setSavingCalendar(false);
+      setTimeout(() => setMessage(""), 3000);
+    }
   };
 
   // ── 儲存 Bot 名稱 ──
   const saveBotName = async () => {
     if (!botName.trim()) return;
     setSavingName(true);
-    await axios.patch(`${API}/bots/${id}`, { name: botName.trim() }, { headers });
-    setBotSettings((prev) => prev ? { ...prev, name: botName.trim() } : prev);
-    setEditingName(false);
-    setSavingName(false);
-    setMessage("✅ Bot 名稱已更新");
-    setTimeout(() => setMessage(""), 3000);
+    try {
+      await axios.patch(`${API}/bots/${id}`, { name: botName.trim() }, { headers });
+      setBotSettings((prev) => prev ? { ...prev, name: botName.trim() } : prev);
+      setEditingName(false);
+      setMessage("✅ Bot 名稱已更新");
+    } catch (err: any) {
+      setMessage(`❌ ${err?.response?.data?.detail || "儲存失敗"}`);
+    } finally {
+      setSavingName(false);
+      setTimeout(() => setMessage(""), 3000);
+    }
   };
 
   // ── Settings：儲存 LINE 憑證 ──
   const saveLineConfig = async () => {
     setSavingLine(true);
-    await axios.patch(`${API}/bots/${id}`, {
-      line_channel_secret: lineSecret,
-      line_channel_access_token: lineToken,
-    }, { headers });
-    setLineConfigured(true);
-    setLineSecret("");
-    setLineToken("");
-    setMessage("✅ LINE 設定已儲存");
-    setSavingLine(false);
-    setTimeout(() => setMessage(""), 3000);
+    try {
+      await axios.patch(`${API}/bots/${id}`, {
+        line_channel_secret: lineSecret,
+        line_channel_access_token: lineToken,
+      }, { headers });
+      setLineConfigured(true);
+      setLineSecret("");
+      setLineToken("");
+      setMessage("✅ LINE 設定已儲存");
+    } catch (err: any) {
+      setMessage(`❌ ${err?.response?.data?.detail || "儲存失敗"}`);
+    } finally {
+      setSavingLine(false);
+      setTimeout(() => setMessage(""), 3000);
+    }
   };
 
   // ── Settings：儲存防抖秒數 ──
   const saveDebounce = async () => {
     setSavingDebounce(true);
-    await axios.patch(`${API}/bots/${id}`, { debounce_seconds: debounceSeconds }, { headers });
-    setMessage("✅ 防抖設定已儲存");
-    setSavingDebounce(false);
-    setTimeout(() => setMessage(""), 3000);
+    try {
+      await axios.patch(`${API}/bots/${id}`, { debounce_seconds: debounceSeconds }, { headers });
+      setMessage("✅ 防抖設定已儲存");
+    } catch (err: any) {
+      setMessage(`❌ ${err?.response?.data?.detail || "儲存失敗"}`);
+    } finally {
+      setSavingDebounce(false);
+      setTimeout(() => setMessage(""), 3000);
+    }
   };
 
   const saveOffHours = async () => {
     setSavingOffHours(true);
-    await axios.patch(`${API}/bots/${id}`, {
-      off_hours_message: offHoursMessage,
-      business_hours: { start: businessStart, end: businessEnd, weekdays: workWeekdays },
-    }, { headers });
-    setMessage("✅ 下班時間設定已儲存");
-    setSavingOffHours(false);
-    setTimeout(() => setMessage(""), 3000);
+    try {
+      await axios.patch(`${API}/bots/${id}`, {
+        off_hours_message: offHoursMessage,
+        business_hours: { start: businessStart, end: businessEnd, weekdays: workWeekdays },
+      }, { headers });
+      setMessage("✅ 下班時間設定已儲存");
+    } catch (err: any) {
+      setMessage(`❌ ${err?.response?.data?.detail || "儲存失敗"}`);
+    } finally {
+      setSavingOffHours(false);
+      setTimeout(() => setMessage(""), 3000);
+    }
   };
 
   // ── Analytics：載入數據 ──
@@ -561,34 +601,49 @@ export default function BotDetailPage() {
   // ── Settings：儲存 Sheet ──
   const saveSheet = async () => {
     setSavingSheet(true);
-    await axios.patch(`${API}/bots/${id}`, {
-      sheet_id: sheetId,
-      collect_fields: collectFields,
-    }, { headers });
-    setMessage("✅ Google Sheet 設定已儲存");
-    setSavingSheet(false);
-    setTimeout(() => setMessage(""), 3000);
+    try {
+      await axios.patch(`${API}/bots/${id}`, {
+        sheet_id: sheetId,
+        collect_fields: collectFields,
+      }, { headers });
+      setMessage("✅ Google Sheet 設定已儲存");
+    } catch (err: any) {
+      setMessage(`❌ ${err?.response?.data?.detail || "儲存失敗"}`);
+    } finally {
+      setSavingSheet(false);
+      setTimeout(() => setMessage(""), 3000);
+    }
   };
 
   // ── 儲存 Instagram ──
   const saveInstagram = async () => {
     if (!instagramPageToken.trim()) return;
     setSavingInstagram(true);
-    await axios.patch(`${API}/bots/${id}`, { instagram_page_token: instagramPageToken }, { headers });
-    setInstagramConfigured(true);
-    setInstagramPageToken("");
-    setMessage("✅ Instagram 設定已儲存");
-    setSavingInstagram(false);
-    setTimeout(() => setMessage(""), 3000);
+    try {
+      await axios.patch(`${API}/bots/${id}`, { instagram_page_token: instagramPageToken }, { headers });
+      setInstagramConfigured(true);
+      setInstagramPageToken("");
+      setMessage("✅ Instagram 設定已儲存");
+    } catch (err: any) {
+      setMessage(`❌ ${err?.response?.data?.detail || "儲存失敗"}`);
+    } finally {
+      setSavingInstagram(false);
+      setTimeout(() => setMessage(""), 3000);
+    }
   };
 
   // ── Settings：儲存關鍵字觸發 ──
   const saveKeywordTriggers = async () => {
     setSavingKeywords(true);
-    await axios.patch(`${API}/bots/${id}`, { keyword_triggers: keywordTriggers }, { headers });
-    setMessage("✅ 關鍵字設定已儲存");
-    setSavingKeywords(false);
-    setTimeout(() => setMessage(""), 3000);
+    try {
+      await axios.patch(`${API}/bots/${id}`, { keyword_triggers: keywordTriggers }, { headers });
+      setMessage("✅ 關鍵字設定已儲存");
+    } catch (err: any) {
+      setMessage(`❌ ${err?.response?.data?.detail || "儲存失敗"}`);
+    } finally {
+      setSavingKeywords(false);
+      setTimeout(() => setMessage(""), 3000);
+    }
   };
 
   // ── Onboarding 進度 ──

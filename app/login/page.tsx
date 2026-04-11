@@ -19,7 +19,9 @@ function LoginForm() {
       const API = "/api/proxy";
       const res = await axios.post(`${API}/auth/login`, { email, password });
       localStorage.setItem("token", res.data.token);
-      const redirect = searchParams.get("redirect") || "/dashboard";
+      // 只允許站內路徑，防止 open redirect 攻擊
+      const raw = searchParams.get("redirect") || "/dashboard";
+      const redirect = raw.startsWith("/") && !raw.startsWith("//") ? raw : "/dashboard";
       router.push(redirect);
     } catch {
       setError("帳號或密碼錯誤");

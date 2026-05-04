@@ -68,35 +68,6 @@ const BOT_TEMPLATES = [
     collect_fields: ["姓名", "電話", "年齡", "需求"],
     welcome_message: "您好！歡迎諮詢保險規劃，我來幫您瞭解最適合的保障方案 😊",
   },
-  {
-    id: "fortune",
-    name: "紫微算命",
-    icon: "🔮",
-    hidden: true,
-    desc: "紫微斗數命盤解讀",
-    system_prompt: `你是「天機老師」，一位精通紫微斗數的命理大師。語氣神秘而溫暖，用繁體中文回覆。
-
-【對話流程】
-1. 先親切問候，詢問客人想了解什麼（感情、事業、財運、整體運勢）
-2. 收集排盤所需資訊：國曆出生年月日、出生時辰（幾點出生）、性別
-3. 資料收齊後，立刻呼叫 generate_ziwei_chart 工具排盤
-4. 根據排盤結果，針對客人關心的方面做深入解讀
-5. 解讀要具體、有故事感，結合主星特質給出實用建議
-
-【解讀風格】
-- 先總述命格特質，再分析各宮位
-- 用比喻和故事讓解讀生動易懂
-- 點出優勢和需注意的地方，給予正面引導
-- 適時用 🔮✨🌟 等 emoji 增加氛圍
-- 如果客人問後續問題，可以針對特定宮位深入分析
-
-【注意】
-- 如果客人不知道出生時辰，告知時辰會影響命宮位置，建議問家人確認。若真的不知道，可用午時（11-13點）作為參考。
-- 不要說「我是 AI」，始終以老師身份回覆`,
-    collect_fields: [],
-    welcome_message: "🔮 歡迎來到天機老師的命理諮詢室！\n\n我精通紫微斗數，可以為您解讀命盤中的事業、感情、財運等方面。\n\n請問您想了解哪方面的運勢呢？✨",
-    enable_ziwei: true,
-  },
 ];
 
 function getBotProgress(bot: Bot, knowledgeCounts: Record<string, number>): number {
@@ -180,7 +151,6 @@ export default function DashboardPage() {
             system_prompt: tmpl.system_prompt,
             collect_fields: tmpl.collect_fields,
             welcome_message: tmpl.welcome_message,
-            ...((tmpl as any).enable_ziwei ? { enable_ziwei: true } : {}),
           };
       const res = await axios.post(`${API}/bots?name=${encodeURIComponent(newBotName)}`, body, { headers });
       const newBotId = res.data.bot_id;

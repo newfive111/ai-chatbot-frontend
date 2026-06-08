@@ -84,6 +84,7 @@ export default function BotDetailPage() {
   // Analytics
   const [aiReport, setAiReport] = useState<string | null>(null);
   const [aiReportLoading, setAiReportLoading] = useState(false);
+  const [aiStats, setAiStats] = useState<{ total_sessions: number; completed_sessions: number; completion_rate: number; total_messages: number } | null>(null);
   const [faqText, setFaqText] = useState("");
   const [question, setQuestion] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -572,9 +573,11 @@ export default function BotDetailPage() {
     if (!id) return;
     setAiReportLoading(true);
     setAiReport(null);
+    setAiStats(null);
     try {
       const res = await axios.post(`${API}/bots/${id}/ai-analysis`, {}, { headers });
       setAiReport(res.data.report);
+      setAiStats(res.data.stats ?? null);
     } catch (err: any) {
       setAiReport(`❌ ${err?.response?.data?.detail || "分析失敗，請稍後再試"}`);
     }
@@ -1775,22 +1778,68 @@ export default function BotDetailPage() {
         {/* ── 數據 Tab ── */}
         {tab === "analytics" && (
           <div className="flex flex-col gap-6">
-            <div className="bg-gray-900 rounded-xl p-6">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="font-semibold">🤖 AI 對話分析</h2>
-                <span className="text-xs text-gray-500">分析最近 100 筆對話</span>
+            {/* Stats 卡片（分析後才顯示）*/}
+            {aiStats && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gray-900 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-blue-400">{aiStats.total_sessions}</div>
+                  <div className="text-gray-400 text-xs mt-1">對話組數</div>
+                </div>
+                <div className="bg-gray-900 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-green-400">{aiStats.total_messages}</div>
+                  <div className="text-gray-400 text-xs mt-1">總訊息數</div>
+                </div>
+                <div className="bg-gray-900 rounded-xl p-4 text-center">
+                  <div className="text-2xl font-bold text-yellow-400">{aiStats.completed_sessions}</div>
+                  <div className="text-gray-400 text-xs mt-1">完成資料收集</div>
+                </div>
+                <div className="bg-gray-900 rounded-xl p-4 text-center">
+                  <div className={`text-2xl font-bold ${aiStats.completion_rate >= 50 ? "text-green-400" : aiStats.completion_rate >= 25 ? "text-yellow-400" : "text-red-400"}`}>
+                    {aiStats.completion_rate}%
+                  </div>
+                  <div className="text-gray-400 text-xs mt-1">完成率</div>
+                </div>
               </div>
-              <p className="text-gray-500 text-xs mb-4">由 AI 自動歸納客戶需求、評估回答品質、提出改善建議</p>
+            )}
+
+            {/* AI 分析區 */}
+            <div className="bg-gray-900 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="font-semibold">🤖 AI 對話分析</h2>
+                <span className="text-xs text-gray-500">分析最近 200 筆／最多 40 組對話</span>
+              </div>
+              <p className="text-gray-500 text-xs mb-4">依對話 session 分組，分析完成率、客戶疑慮、Bot 問題與改善建議</p>
               <button
                 onClick={fetchAiReport}
                 disabled={aiReportLoading}
                 className="w-full bg-purple-700 hover:bg-purple-600 disabled:opacity-50 py-3 rounded-xl font-semibold text-sm transition mb-4"
               >
-                {aiReportLoading ? "⏳ AI 分析中..." : "✨ 開始 AI 分析"}
+                {aiReportLoading ? "⏳ AI 分析中（約 15-30 秒）..." : aiReport ? "🔄 重新分析" : "✨ 開始 AI 分析"}
               </button>
               {aiReport && (
-                <div className="bg-gray-800 rounded-xl p-5 text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">
-                  {aiReport}
+                <div className="bg-gray-800 rounded-xl p-5 text-sm text-gray-200 leading-relaxed">
+                  {aiReport.split("\n").map((line, i) => {
+                    if (line.startsWith("## ")) {
+                      return <h3 key={i} className="text-base font-bold text-white mt-5 mb-2 first:mt-0">{line.replace("## ", "")}</h3>;
+                    }
+                    if (line.startsWith("### ")) {
+                      return <h4 key={i} className="text-sm font-semibold text-gray-300 mt-3 mb-1">{line.replace("### ", "")}</h4>;
+                    }
+                    // **bold** 處理
+                    const parts = line.split(/(\*\*[^*]+\*\*)/g);
+                    const rendered = parts.map((p, j) =>
+                      p.startsWith("**") && p.endsWith("**")
+                        ? <strong key={j} className="text-white font-semibold">{p.slice(2, -2)}</strong>
+                        : p
+                    );
+                    if (line.startsWith("- ") || line.startsWith("* ")) {
+                      return <div key={i} className="flex gap-2 mb-1"><span className="text-purple-400 shrink-0">•</span><span>{rendered}</span></div>;
+                    }
+                    if (line.trim() === "" || line === "---") {
+                      return <div key={i} className="h-2" />;
+                    }
+                    return <p key={i} className="mb-1">{rendered}</p>;
+                  })}
                 </div>
               )}
             </div>

@@ -85,6 +85,8 @@ export default function BotDetailPage() {
   const [aiReport, setAiReport] = useState<string | null>(null);
   const [aiReportLoading, setAiReportLoading] = useState(false);
   const [aiStats, setAiStats] = useState<{ total_sessions: number; completed_sessions: number; completion_rate: number; total_messages: number } | null>(null);
+  const [analysisDays, setAnalysisDays] = useState(30);
+  const [cleaningFortune, setCleaningFortune] = useState(false);
   const [faqText, setFaqText] = useState("");
   const [question, setQuestion] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -575,13 +577,26 @@ export default function BotDetailPage() {
     setAiReport(null);
     setAiStats(null);
     try {
-      const res = await axios.post(`${API}/bots/${id}/ai-analysis`, {}, { headers });
+      const res = await axios.post(`${API}/bots/${id}/ai-analysis`, { days: analysisDays }, { headers });
       setAiReport(res.data.report);
       setAiStats(res.data.stats ?? null);
     } catch (err: any) {
       setAiReport(`❌ ${err?.response?.data?.detail || "分析失敗，請稍後再試"}`);
     }
     setAiReportLoading(false);
+  };
+
+  const cleanFortune = async () => {
+    if (!id) return;
+    if (!confirm("確定要永久刪除所有含占卜/算命關鍵字的對話記錄嗎？此操作無法復原。")) return;
+    setCleaningFortune(true);
+    try {
+      const res = await axios.delete(`${API}/bots/${id}/conversations/fortune`, { headers });
+      alert(`✅ 已刪除 ${res.data.deleted} 筆占卜相關對話`);
+    } catch (err: any) {
+      alert(`❌ ${err?.response?.data?.detail || "刪除失敗"}`);
+    }
+    setCleaningFortune(false);
   };
 
   // ── Settings：儲存 Sheet ──
@@ -1806,15 +1821,46 @@ export default function BotDetailPage() {
             <div className="bg-gray-900 rounded-xl p-6">
               <div className="flex items-center justify-between mb-1">
                 <h2 className="font-semibold">🤖 AI 對話分析</h2>
-                <span className="text-xs text-gray-500">分析最近 200 筆／最多 40 組對話</span>
               </div>
               <p className="text-gray-500 text-xs mb-4">依對話 session 分組，分析完成率、客戶疑慮、Bot 問題與改善建議</p>
+
+              {/* 時間範圍選擇 */}
+              <div className="flex gap-2 mb-4">
+                {[
+                  { label: "7 天", value: 7 },
+                  { label: "30 天", value: 30 },
+                  { label: "90 天", value: 90 },
+                  { label: "全部", value: 0 },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setAnalysisDays(opt.value)}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition border ${
+                      analysisDays === opt.value
+                        ? "bg-purple-800 border-purple-500 text-white"
+                        : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
               <button
                 onClick={fetchAiReport}
                 disabled={aiReportLoading}
-                className="w-full bg-purple-700 hover:bg-purple-600 disabled:opacity-50 py-3 rounded-xl font-semibold text-sm transition mb-4"
+                className="w-full bg-purple-700 hover:bg-purple-600 disabled:opacity-50 py-3 rounded-xl font-semibold text-sm transition mb-3"
               >
                 {aiReportLoading ? "⏳ AI 分析中（約 15-30 秒）..." : aiReport ? "🔄 重新分析" : "✨ 開始 AI 分析"}
+              </button>
+
+              {/* 清理占卜資料 */}
+              <button
+                onClick={cleanFortune}
+                disabled={cleaningFortune}
+                className="w-full bg-gray-800 hover:bg-red-900/40 disabled:opacity-50 border border-gray-700 hover:border-red-700 py-2 rounded-xl text-xs text-gray-500 hover:text-red-400 transition mb-4"
+              >
+                {cleaningFortune ? "刪除中..." : "🗑️ 清除占卜/算命相關對話記錄"}
               </button>
               {aiReport && (
                 <div className="bg-gray-800 rounded-xl p-5 text-sm text-gray-200 leading-relaxed">

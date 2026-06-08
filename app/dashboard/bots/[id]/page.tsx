@@ -588,11 +588,11 @@ export default function BotDetailPage() {
 
   const cleanFortune = async () => {
     if (!id) return;
-    if (!confirm("確定要永久刪除所有含占卜/算命關鍵字的對話記錄嗎？此操作無法復原。")) return;
+    if (!confirm("確定要永久刪除這個 Bot 的全部對話記錄嗎？此操作無法復原。")) return;
     setCleaningFortune(true);
     try {
-      const res = await axios.delete(`${API}/bots/${id}/conversations/fortune`, { headers });
-      alert(`✅ 已刪除 ${res.data.deleted} 筆占卜相關對話`);
+      const res = await axios.delete(`${API}/bots/${id}/conversations/all`, { headers });
+      alert(`✅ 已刪除 ${res.data.deleted} 筆對話記錄`);
     } catch (err: any) {
       alert(`❌ ${err?.response?.data?.detail || "刪除失敗"}`);
     }
@@ -1854,13 +1854,13 @@ export default function BotDetailPage() {
                 {aiReportLoading ? "⏳ AI 分析中（約 15-30 秒）..." : aiReport ? "🔄 重新分析" : "✨ 開始 AI 分析"}
               </button>
 
-              {/* 清理占卜資料 */}
+              {/* 清除全部對話資料 */}
               <button
                 onClick={cleanFortune}
                 disabled={cleaningFortune}
                 className="w-full bg-gray-800 hover:bg-red-900/40 disabled:opacity-50 border border-gray-700 hover:border-red-700 py-2 rounded-xl text-xs text-gray-500 hover:text-red-400 transition mb-4"
               >
-                {cleaningFortune ? "刪除中..." : "🗑️ 清除占卜/算命相關對話記錄"}
+                {cleaningFortune ? "刪除中..." : "🗑️ 清除資料"}
               </button>
               {aiReport && (
                 <div className="bg-gray-800 rounded-xl p-5 text-sm text-gray-200 leading-relaxed">

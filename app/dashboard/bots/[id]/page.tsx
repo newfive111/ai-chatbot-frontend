@@ -96,6 +96,8 @@ export default function BotDetailPage() {
   // Analytics
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [aiReport, setAiReport] = useState<string | null>(null);
+  const [aiReportLoading, setAiReportLoading] = useState(false);
   const [faqText, setFaqText] = useState("");
   const [question, setQuestion] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -591,6 +593,20 @@ export default function BotDetailPage() {
       console.error("Analytics fetch failed", err);
     }
     setAnalyticsLoading(false);
+  };
+
+  // ── Analytics：AI 分析 ──
+  const fetchAiReport = async () => {
+    if (!id) return;
+    setAiReportLoading(true);
+    setAiReport(null);
+    try {
+      const res = await axios.post(`${API}/bots/${id}/ai-analysis`, {}, { headers });
+      setAiReport(res.data.report);
+    } catch (err: any) {
+      setAiReport(`❌ ${err?.response?.data?.detail || "分析失敗，請稍後再試"}`);
+    }
+    setAiReportLoading(false);
   };
 
   // ── Settings：儲存 Sheet ──
@@ -1917,6 +1933,27 @@ export default function BotDetailPage() {
                 >
                   🔄 重新載入
                 </button>
+
+                {/* 🤖 AI 分析報告 */}
+                <div className="bg-gray-900 rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="font-semibold">🤖 AI 對話分析</h2>
+                    <span className="text-xs text-gray-500">分析最近 100 筆對話</span>
+                  </div>
+                  <p className="text-gray-500 text-xs mb-4">由 AI 自動歸納客戶需求、評估回答品質、提出改善建議</p>
+                  <button
+                    onClick={fetchAiReport}
+                    disabled={aiReportLoading}
+                    className="w-full bg-purple-700 hover:bg-purple-600 disabled:opacity-50 py-3 rounded-xl font-semibold text-sm transition mb-4"
+                  >
+                    {aiReportLoading ? "⏳ AI 分析中..." : "✨ 開始 AI 分析"}
+                  </button>
+                  {aiReport && (
+                    <div className="bg-gray-800 rounded-xl p-5 text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">
+                      {aiReport}
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <div className="text-center text-gray-500 py-20">載入失敗，請重試</div>

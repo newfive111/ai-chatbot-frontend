@@ -88,6 +88,36 @@ const PROMPT_PRESETS = [
   { key: "consultant",      label: "🎯 專業顧問",  desc: "提供建議、輔助決策", prompt: "你是「{bot_name}」的諮詢顧問，負責提供專業建議，幫助客戶做出最適合的決策。" },
 ];
 
+// 簡單模式：結構化角色填空
+const PERSONA_ROLES = [
+  { key: "customer_service", label: "客服人員" },
+  { key: "sales",            label: "業務專員" },
+  { key: "booking",          label: "預約助理" },
+  { key: "consultant",       label: "諮詢顧問" },
+  { key: "general",          label: "一般助理" },
+];
+const PERSONA_TONES = ["親切", "專業", "簡潔", "熱情活潑", "正式禮貌", "幽默輕鬆"];
+
+interface PersonaForm {
+  business: string;
+  role: string;
+  tones: string[];
+  highlights: string;
+  taboos: string;
+}
+
+// 把填空表單組成 system_prompt（平台規則後端會自動補，不用寫）
+function buildPersonaPrompt(form: PersonaForm, botName: string): string {
+  const roleLabel = PERSONA_ROLES.find((r) => r.key === form.role)?.label || "客服人員";
+  const name = botName || "Bot";
+  const lines: string[] = [`你是「${name}」的${roleLabel}。`];
+  if (form.business.trim())   lines.push(`【關於我們】\n${form.business.trim()}`);
+  if (form.tones.length)      lines.push(`【說話語氣】${form.tones.join("、")}，用繁體中文自然回覆。`);
+  if (form.highlights.trim()) lines.push(`【一定要讓客戶知道的重點】\n${form.highlights.trim()}`);
+  if (form.taboos.trim())     lines.push(`【絕對不要做的事】\n${form.taboos.trim()}`);
+  return lines.join("\n\n");
+}
+
 export default function BotDetailPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -191,6 +221,15 @@ export default function BotDetailPage() {
   // 角色 tab state
   const [systemPrompt, setSystemPrompt] = useState("");
   const [savingPrompt, setSavingPrompt] = useState(false);
+  // 簡單填空模式
+  const [personaMode, setPersonaMode] = useState<"simple" | "advanced">("simple");
+  const [pBusiness, setPBusiness] = useState("");
+  const [pRole, setPRole] = useState("customer_service");
+  const [pTones, setPTones] = useState<string[]>(["親切"]);
+  const [pHighlights, setPHighlights] = useState("");
+  const [pTaboos, setPTaboos] = useState("");
+  const [pGenDesc, setPGenDesc] = useState("");
+  const [pGenLoading, setPGenLoading] = useState(false);
   const [welcomeMessage, setWelcomeMessage] = useState("");
   const [quickReplies, setQuickReplies] = useState<string[]>([]);
   const [newQuickReply, setNewQuickReply] = useState("");
@@ -258,6 +297,18 @@ export default function BotDetailPage() {
       setSheetId(data.sheet_id || "");
       setCollectFields(data.collect_fields || []);
       setSystemPrompt(data.system_prompt || "");
+      const pf = data.persona_form;
+      if (pf && typeof pf === "object") {
+        setPBusiness(pf.business || "");
+        setPRole(pf.role || "customer_service");
+        setPTones(Array.isArray(pf.tones) && pf.tones.length ? pf.tones : ["親切"]);
+        setPHighlights(pf.highlights || "");
+        setPTaboos(pf.taboos || "");
+        setPersonaMode("simple");
+      } else {
+        // 沒有填空紀錄：有舊的自訂 prompt → 進階；全新 → 簡單
+        setPersonaMode(data.system_prompt ? "advanced" : "simple");
+      }
       setWelcomeMessage(data.welcome_message || "");
       setQuickReplies((data.quick_replies || []).map((q: any) => q.label || q));
       setLineConfigured(!!(data.line_channel_secret && data.line_channel_access_token));
@@ -506,7 +557,17 @@ export default function BotDetailPage() {
   const savePrompt = async () => {
     setSavingPrompt(true);
     try {
-      await axios.patch(`${API}/bots/${id}`, { system_prompt: systemPrompt }, { headers });
+      let payload: any;
+      if (personaMode === "simple") {
+        const form: PersonaForm = {
+          business: pBusiness, role: pRole, tones: pTones,
+          highlights: pHighlights, taboos: pTaboos,
+        };
+        payload = { system_prompt: buildPersonaPrompt(form, botName), persona_form: form };
+      } else {
+        payload = { system_prompt: systemPrompt };
+      }
+      await axios.patch(`${API}/bots/${id}`, payload, { headers });
       setMessage("✅ 角色設定已儲存");
       setIsDirty(false);
     } catch (err: any) {
@@ -514,6 +575,29 @@ export default function BotDetailPage() {
     } finally {
       setSavingPrompt(false);
       setTimeout(() => setMessage(""), 3000);
+    }
+  };
+
+  // 方案 2：一句話 → AI 幫忙填好結構化表單
+  const generatePersona = async () => {
+    if (!pGenDesc.trim() || !id) return;
+    setPGenLoading(true);
+    try {
+      const res = await axios.post(`${API}/bots/${id}/generate-persona`, { description: pGenDesc }, { headers });
+      const d = res.data;
+      setPBusiness(d.business || "");
+      setPRole(d.role || "customer_service");
+      setPTones(Array.isArray(d.tones) && d.tones.length ? d.tones : ["親切"]);
+      setPHighlights(d.highlights || "");
+      setPTaboos(d.taboos || "");
+      setPersonaMode("simple");
+      setIsDirty(true);
+      setMessage("✅ 已幫你填好，確認內容後按「儲存角色設定」");
+    } catch (err: any) {
+      setMessage(`❌ ${err?.response?.data?.detail || "生成失敗，請稍後再試"}`);
+    } finally {
+      setPGenLoading(false);
+      setTimeout(() => setMessage(""), 4000);
     }
   };
 
@@ -1053,47 +1137,174 @@ export default function BotDetailPage() {
 
             {/* 角色 & 說話風格 */}
             <div className="bg-gray-900 rounded-2xl p-6">
-              <h2 className="text-lg font-semibold mb-1">🤖 角色 & 說話風格</h2>
-              <p className="text-gray-400 text-sm mb-5">決定 Bot 扮演什麼角色、用什麼口吻說話。</p>
-
-              <div className="grid grid-cols-2 gap-3 mb-5">
-                {PROMPT_PRESETS.map((preset) => {
-                  const isActive = systemPrompt.trim() === preset.prompt.trim();
-                  return (
-                    <button
-                      key={preset.key}
-                      onClick={() => setSystemPrompt(preset.prompt)}
-                      className={`text-left p-4 rounded-xl border transition ${
-                        isActive
-                          ? "border-blue-500 bg-blue-900/30 text-white"
-                          : "border-gray-700 bg-gray-800 hover:border-gray-500 text-gray-300"
-                      }`}
-                    >
-                      <p className="font-medium text-sm">{preset.label}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{preset.desc}</p>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="mb-2">
-                <div className="flex justify-between items-center mb-1">
-                  <label className="text-sm text-gray-400">自訂角色描述</label>
-                  {systemPrompt && (
-                    <button onClick={() => setSystemPrompt("")} className="text-xs text-gray-500 hover:text-red-400 transition">清除</button>
-                  )}
+              <div className="flex justify-between items-start mb-1">
+                <h2 className="text-lg font-semibold">🤖 角色 & 說話風格</h2>
+                <div className="flex gap-1 bg-gray-800 rounded-lg p-1 text-xs">
+                  <button
+                    onClick={() => setPersonaMode("simple")}
+                    className={`px-3 py-1 rounded-md transition ${personaMode === "simple" ? "bg-purple-600 text-white" : "text-gray-400 hover:text-white"}`}
+                  >
+                    簡單填空
+                  </button>
+                  <button
+                    onClick={() => setPersonaMode("advanced")}
+                    className={`px-3 py-1 rounded-md transition ${personaMode === "advanced" ? "bg-purple-600 text-white" : "text-gray-400 hover:text-white"}`}
+                  >
+                    進階編輯
+                  </button>
                 </div>
-                <textarea
-                  value={systemPrompt}
-                  onChange={(e) => { setSystemPrompt(e.target.value); setIsDirty(true); }}
-                  placeholder={`例如：你是「${botSettings?.name || "Bot"}」的業務專員，說話風格積極有親和力...`}
-                  rows={12}
-                  className="w-full bg-gray-800 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 resize-y text-sm min-h-[200px]"
-                />
               </div>
-              <p className="text-gray-600 text-xs mb-4">
-                可用 <code className="bg-gray-800 px-1 rounded text-gray-400">{"{bot_name}"}</code> 代入 Bot 名稱。
-              </p>
+              <p className="text-gray-400 text-sm mb-5">決定 Bot 扮演什麼角色、用什麼口吻說話。平台會自動處理防失憶、資料收集等規則，你只要填角色重點就好。</p>
+
+              {personaMode === "simple" ? (
+                <div className="space-y-5">
+                  {/* 方案 2：一句話 → AI 幫你填 */}
+                  <div className="bg-gradient-to-r from-purple-900/40 to-pink-900/30 border border-purple-800/50 rounded-xl p-4">
+                    <label className="text-sm font-medium text-purple-200 block mb-2">✨ 懶得填？用一句話描述你的生意，讓 AI 幫你填</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={pGenDesc}
+                        onChange={(e) => setPGenDesc(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && !pGenLoading) generatePersona(); }}
+                        placeholder="例如：我開美甲店，想幫客人預約跟報價"
+                        className="flex-1 bg-gray-800 px-4 py-2.5 rounded-lg outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                      />
+                      <button
+                        onClick={generatePersona}
+                        disabled={pGenLoading || !pGenDesc.trim()}
+                        className="bg-purple-600 hover:bg-purple-500 disabled:opacity-40 px-4 py-2.5 rounded-lg text-sm font-medium transition whitespace-nowrap"
+                      >
+                        {pGenLoading ? "⏳ 生成中..." : "AI 幫我填"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 生意描述 */}
+                  <div>
+                    <label className="text-sm text-gray-300 font-medium block mb-1.5">你的生意在做什麼？</label>
+                    <textarea
+                      value={pBusiness}
+                      onChange={(e) => { setPBusiness(e.target.value); setIsDirty(true); }}
+                      placeholder="例如：我們是專營韓式美甲的工作室，提供光療、卸甲、手足保養等服務。"
+                      rows={2}
+                      className="w-full bg-gray-800 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 resize-y text-sm"
+                    />
+                  </div>
+
+                  {/* 角色 */}
+                  <div>
+                    <label className="text-sm text-gray-300 font-medium block mb-1.5">Bot 扮演什麼角色？</label>
+                    <div className="flex flex-wrap gap-2">
+                      {PERSONA_ROLES.map((r) => (
+                        <button
+                          key={r.key}
+                          onClick={() => { setPRole(r.key); setIsDirty(true); }}
+                          className={`px-4 py-2 rounded-lg text-sm border transition ${
+                            pRole === r.key
+                              ? "border-blue-500 bg-blue-900/30 text-white"
+                              : "border-gray-700 bg-gray-800 hover:border-gray-500 text-gray-300"
+                          }`}
+                        >
+                          {r.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 語氣 */}
+                  <div>
+                    <label className="text-sm text-gray-300 font-medium block mb-1.5">說話語氣（可多選）</label>
+                    <div className="flex flex-wrap gap-2">
+                      {PERSONA_TONES.map((t) => (
+                        <button
+                          key={t}
+                          onClick={() => { setPTones((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]); setIsDirty(true); }}
+                          className={`px-3 py-1.5 rounded-full text-sm border transition ${
+                            pTones.includes(t)
+                              ? "border-purple-500 bg-purple-900/40 text-white"
+                              : "border-gray-700 bg-gray-800 hover:border-gray-500 text-gray-400"
+                          }`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 重點 */}
+                  <div>
+                    <label className="text-sm text-gray-300 font-medium block mb-1.5">一定要讓客戶知道的重點 <span className="text-gray-600">（選填）</span></label>
+                    <textarea
+                      value={pHighlights}
+                      onChange={(e) => { setPHighlights(e.target.value); setIsDirty(true); }}
+                      placeholder="例如：營業時間週二到週日 11:00-20:00、採預約制、可加 LINE 詢問價格。"
+                      rows={3}
+                      className="w-full bg-gray-800 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 resize-y text-sm"
+                    />
+                  </div>
+
+                  {/* 禁忌 */}
+                  <div>
+                    <label className="text-sm text-gray-300 font-medium block mb-1.5">絕對不能說 / 不能做的事 <span className="text-gray-600">（選填）</span></label>
+                    <textarea
+                      value={pTaboos}
+                      onChange={(e) => { setPTaboos(e.target.value); setIsDirty(true); }}
+                      placeholder="例如：不要隨便報明確價格、不要承諾療程效果。"
+                      rows={2}
+                      className="w-full bg-gray-800 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 resize-y text-sm"
+                    />
+                  </div>
+
+                  {/* 即時預覽 */}
+                  <details className="bg-gray-800/50 rounded-xl px-4 py-3">
+                    <summary className="text-xs text-gray-400 cursor-pointer select-none">🔍 預覽實際套用的角色設定</summary>
+                    <pre className="text-xs text-gray-300 whitespace-pre-wrap mt-3 leading-relaxed">{buildPersonaPrompt({ business: pBusiness, role: pRole, tones: pTones, highlights: pHighlights, taboos: pTaboos }, botName)}</pre>
+                  </details>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3 mb-5">
+                    {PROMPT_PRESETS.map((preset) => {
+                      const isActive = systemPrompt.trim() === preset.prompt.trim();
+                      return (
+                        <button
+                          key={preset.key}
+                          onClick={() => { setSystemPrompt(preset.prompt); setIsDirty(true); }}
+                          className={`text-left p-4 rounded-xl border transition ${
+                            isActive
+                              ? "border-blue-500 bg-blue-900/30 text-white"
+                              : "border-gray-700 bg-gray-800 hover:border-gray-500 text-gray-300"
+                          }`}
+                        >
+                          <p className="font-medium text-sm">{preset.label}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{preset.desc}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mb-2">
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-sm text-gray-400">自訂角色描述</label>
+                      {systemPrompt && (
+                        <button onClick={() => { setSystemPrompt(""); setIsDirty(true); }} className="text-xs text-gray-500 hover:text-red-400 transition">清除</button>
+                      )}
+                    </div>
+                    <textarea
+                      value={systemPrompt}
+                      onChange={(e) => { setSystemPrompt(e.target.value); setIsDirty(true); }}
+                      placeholder={`例如：你是「${botSettings?.name || "Bot"}」的業務專員，說話風格積極有親和力...`}
+                      rows={12}
+                      className="w-full bg-gray-800 px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 resize-y text-sm min-h-[200px]"
+                    />
+                  </div>
+                  <p className="text-gray-600 text-xs mb-4">
+                    可用 <code className="bg-gray-800 px-1 rounded text-gray-400">{"{bot_name}"}</code> 代入 Bot 名稱。
+                  </p>
+                </>
+              )}
+              <div className="h-4" />
               <div className="flex gap-2">
                 <button
                   onClick={savePrompt}

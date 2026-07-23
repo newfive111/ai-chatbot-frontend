@@ -733,6 +733,30 @@ export default function BotDetailPage() {
     setAssistantLoading(false);
   };
 
+  // ── 把語氣風格報告帶入 AI 助手，套用到 system_prompt ──
+  const applyStyleWithAssistant = async () => {
+    if (!styleReport || !id) return;
+    setAssistantOpen(true);
+    assistantSessionId.current = `assistant_${id}_${Date.now()}`;
+    const fullMsg = `這是剛產生的「語氣風格分析」報告，請仔細閱讀：\n\n---\n${styleReport}\n---\n\n請把報告最後「可貼進設定的風格段落」那段語氣與話術規範，融入這個 Bot 的 system_prompt（用工具修改 system_prompt）。要求：\n1. 只調整「語氣、口吻、用字遣詞」相關內容，不要更動原本的業務邏輯、角色設定、資料收集規則。\n2. 若 system_prompt 已有語氣相關描述，就更新它，不要重複堆疊。\n\n請先簡短說明你打算怎麼改（改哪裡、加什麼），等我回覆「好」或「改」再用工具實際修改。`;
+    const displayMsg = "🎨 已載入語氣風格報告，請把建議的語氣規範套進 Bot 的 system_prompt";
+    setAssistantMsgs([{ role: "user", content: displayMsg }]);
+    setAssistantLoading(true);
+    try {
+      const res = await axios.post(`${API}/assistant/chat`, {
+        bot_id: id,
+        message: fullMsg,
+        session_id: assistantSessionId.current,
+      }, { headers });
+      setAssistantMsgs((prev) => [...prev, { role: "assistant", content: res.data.reply }]);
+      fetchBotSettings();
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail || err?.message || "未知錯誤";
+      setAssistantMsgs((prev) => [...prev, { role: "assistant", content: `❌ ${detail}` }]);
+    }
+    setAssistantLoading(false);
+  };
+
   // ── Settings：儲存 Sheet ──
   const saveSheet = async () => {
     setSavingSheet(true);
@@ -2050,9 +2074,19 @@ export default function BotDetailPage() {
               )}
 
               {styleReport && (
-                <div className="bg-gray-800 rounded-xl p-5 text-sm text-gray-200 leading-relaxed">
-                  {renderReport(styleReport)}
-                </div>
+                <>
+                  <div className="bg-gray-800 rounded-xl p-5 text-sm text-gray-200 leading-relaxed">
+                    {renderReport(styleReport)}
+                  </div>
+                  <button
+                    onClick={applyStyleWithAssistant}
+                    disabled={assistantLoading}
+                    className="w-full mt-4 bg-gradient-to-r from-pink-700 to-purple-700 hover:from-pink-600 hover:to-purple-600 disabled:opacity-50 py-3 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2"
+                  >
+                    {assistantLoading ? "⏳ 小懶閱讀中..." : "🎨 套用語氣到 Bot（改 system_prompt）"}
+                  </button>
+                  <p className="text-gray-500 text-xs mt-2 text-center">點擊後會打開設定助手「小懶」，把這份語氣指南交給它，你回覆「好」或「改」它就會把語氣規範併進 Bot 的 system_prompt</p>
+                </>
               )}
             </div>
           </div>

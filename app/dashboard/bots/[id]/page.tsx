@@ -100,6 +100,8 @@ export default function BotDetailPage() {
       first_at: string;
       last_at: string;
       completed: boolean;
+      can_mute?: boolean;
+      muted?: boolean;
       messages: { q: string; a: string; at: string }[];
     }[];
   } | null>(null);
@@ -637,6 +639,29 @@ export default function BotDetailPage() {
       setLogsOpen(false);
     }
     setLogsLoading(false);
+  };
+
+  // ── 真人接手 / 恢復 AI（靜音切換）──
+  const [mutingSid, setMutingSid] = useState<string | null>(null);
+  const toggleMute = async (sessionId: string, currentlyMuted: boolean) => {
+    if (!id) return;
+    setMutingSid(sessionId);
+    try {
+      if (currentlyMuted) {
+        await axios.delete(`${API}/bots/${id}/mute`, { params: { session_id: sessionId }, headers });
+      } else {
+        await axios.post(`${API}/bots/${id}/mute`, { session_id: sessionId }, { headers });
+      }
+      setLogsData((prev) => prev && {
+        ...prev,
+        sessions: prev.sessions.map((s) =>
+          s.session_id === sessionId ? { ...s, muted: !currentlyMuted } : s
+        ),
+      });
+    } catch (err: any) {
+      alert(`❌ ${err?.response?.data?.detail || "操作失敗"}`);
+    }
+    setMutingSid(null);
   };
 
   // ── 把分析報告帶入 AI 助手討論改善建議 ──
@@ -2014,23 +2039,41 @@ export default function BotDetailPage() {
                 "bg-gray-800 text-gray-400 border-gray-700";
               return (
                 <div key={s.session_id} className="bg-gray-800/60 border border-gray-700 rounded-xl">
-                  <button
-                    onClick={() => setExpandedSid(expanded ? null : s.session_id)}
-                    className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-gray-800 transition rounded-xl text-left"
-                  >
-                    <div className="flex-1 min-w-0">
+                  <div className="w-full px-4 py-3 flex items-center justify-between gap-3">
+                    <button
+                      onClick={() => setExpandedSid(expanded ? null : s.session_id)}
+                      className="flex-1 min-w-0 text-left"
+                    >
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className={`text-[10px] px-2 py-0.5 rounded border ${channelColor}`}>{s.channel}</span>
                         {s.completed && <span className="text-[10px] px-2 py-0.5 rounded border bg-yellow-900/40 text-yellow-300 border-yellow-800">✅ 完成</span>}
+                        {s.muted && <span className="text-[10px] px-2 py-0.5 rounded border bg-orange-900/40 text-orange-300 border-orange-800">🙋 真人接手中</span>}
                         <span className="text-xs text-gray-500 font-mono truncate">{s.session_id}</span>
                       </div>
                       <p className="text-xs text-gray-400">
                         {s.message_count} 則・{new Date(s.first_at).toLocaleString("zh-TW", { hour12: false })}
                         {s.first_at !== s.last_at && ` → ${new Date(s.last_at).toLocaleString("zh-TW", { hour12: false })}`}
                       </p>
-                    </div>
-                    <span className="text-gray-500 text-sm">{expanded ? "▾" : "▸"}</span>
-                  </button>
+                    </button>
+                    {s.can_mute && (
+                      <button
+                        onClick={() => toggleMute(s.session_id, !!s.muted)}
+                        disabled={mutingSid === s.session_id}
+                        className={`shrink-0 text-[11px] px-3 py-1.5 rounded-lg border transition disabled:opacity-50 ${
+                          s.muted
+                            ? "bg-blue-900/40 text-blue-300 border-blue-800 hover:bg-blue-900/60"
+                            : "bg-orange-900/40 text-orange-300 border-orange-800 hover:bg-orange-900/60"
+                        }`}
+                        title={s.muted ? "讓 AI 重新自動回覆這位客戶" : "AI 停止回覆，改由真人接手這位客戶"}
+                      >
+                        {mutingSid === s.session_id ? "…" : s.muted ? "🤖 恢復 AI" : "🙋 真人接手"}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setExpandedSid(expanded ? null : s.session_id)}
+                      className="shrink-0 text-gray-500 text-sm"
+                    >{expanded ? "▾" : "▸"}</button>
+                  </div>
                   {expanded && (
                     <div className="px-4 pb-3 flex flex-col gap-2 border-t border-gray-700 pt-3">
                       {s.messages.map((m, i) => (
@@ -2047,7 +2090,8 @@ export default function BotDetailPage() {
             })}
           </div>
           <div className="px-6 py-3 border-t border-gray-800 text-xs text-gray-500">
-            💡 每個 session_id 對應一位獨立來源（LINE 用戶／網頁訪客／IG 用戶）。如果數字比實際客戶多，可能是有測試訊息或舊資料殘留。
+            💡 每個 session_id 對應一位獨立來源（LINE 用戶／網頁訪客／IG 用戶）。<br />
+            🙋 LINE 對話可按「真人接手」讓 AI 暫停自動回覆，改由真人在 LINE 官方帳號後台回覆客戶；按「恢復 AI」即可讓 AI 重新接手。
           </div>
         </div>
       </div>

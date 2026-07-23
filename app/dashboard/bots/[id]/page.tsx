@@ -27,6 +27,31 @@ interface BotSettings {
 
 const API = "/api/proxy";
 
+// 極簡 markdown 渲染（## / ### / - / **bold**）
+function renderReport(text: string) {
+  return text.split("\n").map((line, i) => {
+    if (line.startsWith("## ")) {
+      return <h3 key={i} className="text-base font-bold text-white mt-5 mb-2 first:mt-0">{line.replace("## ", "")}</h3>;
+    }
+    if (line.startsWith("### ")) {
+      return <h4 key={i} className="text-sm font-semibold text-gray-300 mt-3 mb-1">{line.replace("### ", "")}</h4>;
+    }
+    const parts = line.split(/(\*\*[^*]+\*\*)/g);
+    const rendered = parts.map((p, j) =>
+      p.startsWith("**") && p.endsWith("**")
+        ? <strong key={j} className="text-white font-semibold">{p.slice(2, -2)}</strong>
+        : p
+    );
+    if (line.startsWith("- ") || line.startsWith("* ")) {
+      return <div key={i} className="flex gap-2 mb-1"><span className="text-purple-400 shrink-0">•</span><span>{rendered}</span></div>;
+    }
+    if (line.trim() === "" || line === "---") {
+      return <div key={i} className="h-2" />;
+    }
+    return <p key={i} className="mb-1">{rendered}</p>;
+  });
+}
+
 // 時間 helper：解析 "HH:MM" 字串 ↔ 小時/分鐘
 const parseTime = (t: string) => {
   const [h = "0", m = "0"] = (t || "00:00").split(":");
@@ -86,6 +111,9 @@ export default function BotDetailPage() {
   const [aiReportLoading, setAiReportLoading] = useState(false);
   const [aiStats, setAiStats] = useState<{ total_sessions: number; completed_sessions: number; completion_rate: number; total_messages: number } | null>(null);
   const [analysisDays, setAnalysisDays] = useState(30);
+  const [styleReport, setStyleReport] = useState<string | null>(null);
+  const [styleReportLoading, setStyleReportLoading] = useState(false);
+  const [styleStats, setStyleStats] = useState<{ total_sessions: number; human_reply_count: number; total_messages: number } | null>(null);
   const [cleaningFortune, setCleaningFortune] = useState(false);
   // 查看對話紀錄
   const [logsOpen, setLogsOpen] = useState(false);
@@ -607,6 +635,21 @@ export default function BotDetailPage() {
       setAiReport(`❌ ${err?.response?.data?.detail || "分析失敗，請稍後再試"}`);
     }
     setAiReportLoading(false);
+  };
+
+  const fetchStyleReport = async () => {
+    if (!id) return;
+    setStyleReportLoading(true);
+    setStyleReport(null);
+    setStyleStats(null);
+    try {
+      const res = await axios.post(`${API}/bots/${id}/style-analysis`, { days: analysisDays }, { headers });
+      setStyleReport(res.data.report);
+      setStyleStats(res.data.stats ?? null);
+    } catch (err: any) {
+      setStyleReport(`❌ ${err?.response?.data?.detail || "分析失敗，請稍後再試"}`);
+    }
+    setStyleReportLoading(false);
   };
 
   const cleanFortune = async () => {
@@ -1969,28 +2012,7 @@ export default function BotDetailPage() {
               {aiReport && (
                 <>
                   <div className="bg-gray-800 rounded-xl p-5 text-sm text-gray-200 leading-relaxed">
-                    {aiReport.split("\n").map((line, i) => {
-                      if (line.startsWith("## ")) {
-                        return <h3 key={i} className="text-base font-bold text-white mt-5 mb-2 first:mt-0">{line.replace("## ", "")}</h3>;
-                      }
-                      if (line.startsWith("### ")) {
-                        return <h4 key={i} className="text-sm font-semibold text-gray-300 mt-3 mb-1">{line.replace("### ", "")}</h4>;
-                      }
-                      // **bold** 處理
-                      const parts = line.split(/(\*\*[^*]+\*\*)/g);
-                      const rendered = parts.map((p, j) =>
-                        p.startsWith("**") && p.endsWith("**")
-                          ? <strong key={j} className="text-white font-semibold">{p.slice(2, -2)}</strong>
-                          : p
-                      );
-                      if (line.startsWith("- ") || line.startsWith("* ")) {
-                        return <div key={i} className="flex gap-2 mb-1"><span className="text-purple-400 shrink-0">•</span><span>{rendered}</span></div>;
-                      }
-                      if (line.trim() === "" || line === "---") {
-                        return <div key={i} className="h-2" />;
-                      }
-                      return <p key={i} className="mb-1">{rendered}</p>;
-                    })}
+                    {renderReport(aiReport)}
                   </div>
                   {/* 把報告帶到 AI 助手，邊聊邊自動改設定 */}
                   <button
@@ -2002,6 +2024,35 @@ export default function BotDetailPage() {
                   </button>
                   <p className="text-gray-500 text-xs mt-2 text-center">點擊後會打開設定助手「小懶」，並把這份報告交給它分析，你只要回覆「好」或「改」它就會自動修改設定</p>
                 </>
+              )}
+            </div>
+
+            {/* 語氣風格分析 */}
+            <div className="bg-gray-900 rounded-xl p-6">
+              <h2 className="font-semibold mb-1">🎨 語氣風格分析</h2>
+              <p className="text-gray-500 text-xs mb-4">讀客戶訊息 + 員工真人代回 + Bot 回覆，分析語氣口吻與遣詞用字，產出一份話術風格指南（沿用上方的時間範圍）</p>
+
+              <button
+                onClick={fetchStyleReport}
+                disabled={styleReportLoading}
+                className="w-full bg-pink-700 hover:bg-pink-600 disabled:opacity-50 py-3 rounded-xl font-semibold text-sm transition mb-3"
+              >
+                {styleReportLoading ? "⏳ 分析語氣中（約 15-30 秒）..." : styleReport ? "🔄 重新分析語氣" : "🎨 開始語氣分析"}
+              </button>
+
+              {styleStats && (
+                <p className="text-xs text-gray-500 mb-3">
+                  分析 {styleStats.total_sessions} 組對話・{styleStats.total_messages} 則訊息・
+                  {styleStats.human_reply_count > 0
+                    ? `${styleStats.human_reply_count} 則員工真人代回可當範本`
+                    : "尚無員工真人代回範例（改用一般客服建議）"}
+                </p>
+              )}
+
+              {styleReport && (
+                <div className="bg-gray-800 rounded-xl p-5 text-sm text-gray-200 leading-relaxed">
+                  {renderReport(styleReport)}
+                </div>
               )}
             </div>
           </div>

@@ -601,6 +601,29 @@ export default function BotDetailPage() {
     }
   };
 
+  // 把現有 system_prompt 反向拆成簡單填空（給老 bot）
+  const extractPersona = async () => {
+    if (!id) return;
+    setPGenLoading(true);
+    try {
+      const res = await axios.post(`${API}/bots/${id}/extract-persona`, {}, { headers });
+      const d = res.data;
+      setPBusiness(d.business || "");
+      setPRole(d.role || "customer_service");
+      setPTones(Array.isArray(d.tones) && d.tones.length ? d.tones : ["親切"]);
+      setPHighlights(d.highlights || "");
+      setPTaboos(d.taboos || "");
+      setPersonaMode("simple");
+      setIsDirty(true);
+      setMessage("✅ 已轉成簡單填空，確認內容後按「儲存角色設定」");
+    } catch (err: any) {
+      setMessage(`❌ ${err?.response?.data?.detail || "轉換失敗，請稍後再試"}`);
+    } finally {
+      setPGenLoading(false);
+      setTimeout(() => setMessage(""), 4000);
+    }
+  };
+
   // ── 角色 tab：儲存引導設定 ──
   const saveGuide = async () => {
     setSavingGuide(true);
@@ -1302,6 +1325,15 @@ export default function BotDetailPage() {
                   <p className="text-gray-600 text-xs mb-4">
                     可用 <code className="bg-gray-800 px-1 rounded text-gray-400">{"{bot_name}"}</code> 代入 Bot 名稱。
                   </p>
+                  {systemPrompt.trim() && (
+                    <button
+                      onClick={extractPersona}
+                      disabled={pGenLoading}
+                      className="w-full mb-2 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-sm text-purple-300 hover:text-purple-200 transition disabled:opacity-50"
+                    >
+                      {pGenLoading ? "⏳ 轉換中..." : "🪄 轉成簡單填空（AI 幫你拆解目前的設定）"}
+                    </button>
+                  )}
                 </>
               )}
               <div className="h-4" />

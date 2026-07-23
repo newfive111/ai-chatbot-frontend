@@ -102,6 +102,7 @@ export default function BotDetailPage() {
       completed: boolean;
       can_mute?: boolean;
       muted?: boolean;
+      display_name?: string;
       messages: { q: string; a: string; at: string }[];
     }[];
   } | null>(null);
@@ -2048,7 +2049,9 @@ export default function BotDetailPage() {
                         <span className={`text-[10px] px-2 py-0.5 rounded border ${channelColor}`}>{s.channel}</span>
                         {s.completed && <span className="text-[10px] px-2 py-0.5 rounded border bg-yellow-900/40 text-yellow-300 border-yellow-800">✅ 完成</span>}
                         {s.muted && <span className="text-[10px] px-2 py-0.5 rounded border bg-orange-900/40 text-orange-300 border-orange-800">🙋 真人接手中</span>}
-                        <span className="text-xs text-gray-500 font-mono truncate">{s.session_id}</span>
+                        {s.display_name
+                          ? <span className="text-sm text-gray-200 font-medium truncate">{s.display_name}</span>
+                          : <span className="text-xs text-gray-500 font-mono truncate">{s.session_id}</span>}
                       </div>
                       <p className="text-xs text-gray-400">
                         {s.message_count} 則・{new Date(s.first_at).toLocaleString("zh-TW", { hour12: false })}

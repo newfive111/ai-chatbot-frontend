@@ -87,6 +87,23 @@ export default function BotDetailPage() {
   const [aiStats, setAiStats] = useState<{ total_sessions: number; completed_sessions: number; completion_rate: number; total_messages: number } | null>(null);
   const [analysisDays, setAnalysisDays] = useState(30);
   const [cleaningFortune, setCleaningFortune] = useState(false);
+  // 查看對話紀錄
+  const [logsOpen, setLogsOpen] = useState(false);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsData, setLogsData] = useState<{
+    total_sessions: number;
+    total_messages: number;
+    sessions: {
+      session_id: string;
+      channel: string;
+      message_count: number;
+      first_at: string;
+      last_at: string;
+      completed: boolean;
+      messages: { q: string; a: string; at: string }[];
+    }[];
+  } | null>(null);
+  const [expandedSid, setExpandedSid] = useState<string | null>(null);
   const [faqText, setFaqText] = useState("");
   const [question, setQuestion] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -103,6 +120,8 @@ export default function BotDetailPage() {
 
   // Settings state
   const [botSettings, setBotSettings] = useState<BotSettings | null>(null);
+  const [myRole, setMyRole] = useState<string>("owner");
+  const isViewer = myRole === "viewer";
   const [editingName, setEditingName] = useState(false);
   const [botName, setBotName] = useState("");
   const [savingName, setSavingName] = useState(false);
@@ -203,6 +222,7 @@ export default function BotDetailPage() {
       const res = await axios.get(`${API}/bots/${id}`, { headers });
       const data: any = res.data;
       setBotSettings(data);
+      setMyRole(data.my_role || "owner");
       setBotName(data.name || "");
       setSheetId(data.sheet_id || "");
       setCollectFields(data.collect_fields || []);
@@ -599,6 +619,51 @@ export default function BotDetailPage() {
     setCleaningFortune(false);
   };
 
+  // ── 查看對話紀錄 ──
+  const fetchLogs = async () => {
+    if (!id) return;
+    setLogsOpen(true);
+    setLogsLoading(true);
+    setLogsData(null);
+    setExpandedSid(null);
+    try {
+      const res = await axios.get(`${API}/bots/${id}/conversations/sessions`, {
+        params: { days: analysisDays },
+        headers,
+      });
+      setLogsData(res.data);
+    } catch (err: any) {
+      alert(`❌ ${err?.response?.data?.detail || "讀取失敗"}`);
+      setLogsOpen(false);
+    }
+    setLogsLoading(false);
+  };
+
+  // ── 把分析報告帶入 AI 助手討論改善建議 ──
+  const discussWithAssistant = async () => {
+    if (!aiReport || !id) return;
+    setAssistantOpen(true);
+    // 開新 session，避免被舊上下文干擾
+    assistantSessionId.current = `assistant_${id}_${Date.now()}`;
+    const fullMsg = `這是剛產生的 Bot 對話分析報告，請仔細閱讀：\n\n---\n${aiReport}\n---\n\n請根據報告裡的「改善建議」幫我優化 Bot 設定（可用工具修改 system_prompt、collect_fields、welcome_message、quick_replies、keyword_triggers 等）。\n\n請先簡短列出你建議優先改的 2-3 項（標號 1./2./3.）並說明原因，等我同意再用工具實際修改。`;
+    const displayMsg = "📋 已載入剛剛的 AI 分析報告，請依「改善建議」協助我優化 Bot 設定";
+    setAssistantMsgs([{ role: "user", content: displayMsg }]);
+    setAssistantLoading(true);
+    try {
+      const res = await axios.post(`${API}/assistant/chat`, {
+        bot_id: id,
+        message: fullMsg,
+        session_id: assistantSessionId.current,
+      }, { headers });
+      setAssistantMsgs((prev) => [...prev, { role: "assistant", content: res.data.reply }]);
+      fetchBotSettings();
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail || err?.message || "未知錯誤";
+      setAssistantMsgs((prev) => [...prev, { role: "assistant", content: `❌ ${detail}` }]);
+    }
+    setAssistantLoading(false);
+  };
+
   // ── Settings：儲存 Sheet ──
   const saveSheet = async () => {
     setSavingSheet(true);
@@ -671,6 +736,11 @@ export default function BotDetailPage() {
         <button onClick={() => router.push("/dashboard")} className="text-gray-400 hover:text-white mb-6 text-sm">
           ← 返回
         </button>
+        {isViewer && (
+          <div className="mb-4 bg-yellow-900/30 border border-yellow-700/50 text-yellow-200 text-sm rounded-lg px-4 py-3">
+            你是此團隊的「檢視者」，僅能查看設定與數據，無法修改。如需編輯權限請聯絡團隊管理員。
+          </div>
+        )}
         <div className="flex items-center gap-3 mb-4">
           {editingName ? (
             <>
@@ -1854,39 +1924,58 @@ export default function BotDetailPage() {
                 {aiReportLoading ? "⏳ AI 分析中（約 15-30 秒）..." : aiReport ? "🔄 重新分析" : "✨ 開始 AI 分析"}
               </button>
 
-              {/* 清除全部對話資料 */}
-              <button
-                onClick={cleanFortune}
-                disabled={cleaningFortune}
-                className="w-full bg-gray-800 hover:bg-red-900/40 disabled:opacity-50 border border-gray-700 hover:border-red-700 py-2 rounded-xl text-xs text-gray-500 hover:text-red-400 transition mb-4"
-              >
-                {cleaningFortune ? "刪除中..." : "🗑️ 清除資料"}
-              </button>
+              {/* 查看對話紀錄 / 清除資料 */}
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={fetchLogs}
+                  className="flex-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-blue-600 py-2 rounded-xl text-xs text-gray-300 hover:text-blue-300 transition"
+                >
+                  📋 查看對話紀錄
+                </button>
+                <button
+                  onClick={cleanFortune}
+                  disabled={cleaningFortune}
+                  className="flex-1 bg-gray-800 hover:bg-red-900/40 disabled:opacity-50 border border-gray-700 hover:border-red-700 py-2 rounded-xl text-xs text-gray-500 hover:text-red-400 transition"
+                >
+                  {cleaningFortune ? "刪除中..." : "🗑️ 清除資料"}
+                </button>
+              </div>
               {aiReport && (
-                <div className="bg-gray-800 rounded-xl p-5 text-sm text-gray-200 leading-relaxed">
-                  {aiReport.split("\n").map((line, i) => {
-                    if (line.startsWith("## ")) {
-                      return <h3 key={i} className="text-base font-bold text-white mt-5 mb-2 first:mt-0">{line.replace("## ", "")}</h3>;
-                    }
-                    if (line.startsWith("### ")) {
-                      return <h4 key={i} className="text-sm font-semibold text-gray-300 mt-3 mb-1">{line.replace("### ", "")}</h4>;
-                    }
-                    // **bold** 處理
-                    const parts = line.split(/(\*\*[^*]+\*\*)/g);
-                    const rendered = parts.map((p, j) =>
-                      p.startsWith("**") && p.endsWith("**")
-                        ? <strong key={j} className="text-white font-semibold">{p.slice(2, -2)}</strong>
-                        : p
-                    );
-                    if (line.startsWith("- ") || line.startsWith("* ")) {
-                      return <div key={i} className="flex gap-2 mb-1"><span className="text-purple-400 shrink-0">•</span><span>{rendered}</span></div>;
-                    }
-                    if (line.trim() === "" || line === "---") {
-                      return <div key={i} className="h-2" />;
-                    }
-                    return <p key={i} className="mb-1">{rendered}</p>;
-                  })}
-                </div>
+                <>
+                  <div className="bg-gray-800 rounded-xl p-5 text-sm text-gray-200 leading-relaxed">
+                    {aiReport.split("\n").map((line, i) => {
+                      if (line.startsWith("## ")) {
+                        return <h3 key={i} className="text-base font-bold text-white mt-5 mb-2 first:mt-0">{line.replace("## ", "")}</h3>;
+                      }
+                      if (line.startsWith("### ")) {
+                        return <h4 key={i} className="text-sm font-semibold text-gray-300 mt-3 mb-1">{line.replace("### ", "")}</h4>;
+                      }
+                      // **bold** 處理
+                      const parts = line.split(/(\*\*[^*]+\*\*)/g);
+                      const rendered = parts.map((p, j) =>
+                        p.startsWith("**") && p.endsWith("**")
+                          ? <strong key={j} className="text-white font-semibold">{p.slice(2, -2)}</strong>
+                          : p
+                      );
+                      if (line.startsWith("- ") || line.startsWith("* ")) {
+                        return <div key={i} className="flex gap-2 mb-1"><span className="text-purple-400 shrink-0">•</span><span>{rendered}</span></div>;
+                      }
+                      if (line.trim() === "" || line === "---") {
+                        return <div key={i} className="h-2" />;
+                      }
+                      return <p key={i} className="mb-1">{rendered}</p>;
+                    })}
+                  </div>
+                  {/* 把報告帶到 AI 助手，邊聊邊自動改設定 */}
+                  <button
+                    onClick={discussWithAssistant}
+                    disabled={assistantLoading}
+                    className="w-full mt-4 bg-gradient-to-r from-purple-700 to-blue-700 hover:from-purple-600 hover:to-blue-600 disabled:opacity-50 py-3 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2"
+                  >
+                    {assistantLoading ? "⏳ 小懶閱讀中..." : "💬 跟 AI 討論改善建議（自動套用設定）"}
+                  </button>
+                  <p className="text-gray-500 text-xs mt-2 text-center">點擊後會打開設定助手「小懶」，並把這份報告交給它分析，你只要回覆「好」或「改」它就會自動修改設定</p>
+                </>
               )}
             </div>
           </div>
@@ -1894,6 +1983,75 @@ export default function BotDetailPage() {
 
       </div>
     </main>
+
+    {/* ── 對話紀錄 Modal ── */}
+    {logsOpen && (
+      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4">
+        <div className="bg-gray-900 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl border border-gray-800">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
+            <div>
+              <h2 className="font-semibold text-white">📋 對話紀錄</h2>
+              {logsData && (
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {analysisDays > 0 ? `近 ${analysisDays} 天` : "全部"}・{logsData.total_sessions} 個 session・{logsData.total_messages} 則訊息
+                </p>
+              )}
+            </div>
+            <button onClick={() => setLogsOpen(false)} className="text-gray-400 hover:text-white text-xl">✕</button>
+          </div>
+          <div className="overflow-y-auto flex-1 px-4 py-4 flex flex-col gap-2">
+            {logsLoading ? (
+              <p className="text-gray-500 text-sm text-center py-8">載入中...</p>
+            ) : !logsData || logsData.sessions.length === 0 ? (
+              <p className="text-gray-500 text-sm text-center py-8">這個範圍內沒有對話紀錄</p>
+            ) : logsData.sessions.map((s) => {
+              const expanded = expandedSid === s.session_id;
+              const channelColor =
+                s.channel === "LINE" ? "bg-green-900/40 text-green-300 border-green-800" :
+                s.channel === "IG" || s.channel === "IG 留言" ? "bg-pink-900/40 text-pink-300 border-pink-800" :
+                s.channel === "網頁/測試" ? "bg-blue-900/40 text-blue-300 border-blue-800" :
+                s.channel === "設定助手" ? "bg-purple-900/40 text-purple-300 border-purple-800" :
+                "bg-gray-800 text-gray-400 border-gray-700";
+              return (
+                <div key={s.session_id} className="bg-gray-800/60 border border-gray-700 rounded-xl">
+                  <button
+                    onClick={() => setExpandedSid(expanded ? null : s.session_id)}
+                    className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-gray-800 transition rounded-xl text-left"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className={`text-[10px] px-2 py-0.5 rounded border ${channelColor}`}>{s.channel}</span>
+                        {s.completed && <span className="text-[10px] px-2 py-0.5 rounded border bg-yellow-900/40 text-yellow-300 border-yellow-800">✅ 完成</span>}
+                        <span className="text-xs text-gray-500 font-mono truncate">{s.session_id}</span>
+                      </div>
+                      <p className="text-xs text-gray-400">
+                        {s.message_count} 則・{new Date(s.first_at).toLocaleString("zh-TW", { hour12: false })}
+                        {s.first_at !== s.last_at && ` → ${new Date(s.last_at).toLocaleString("zh-TW", { hour12: false })}`}
+                      </p>
+                    </div>
+                    <span className="text-gray-500 text-sm">{expanded ? "▾" : "▸"}</span>
+                  </button>
+                  {expanded && (
+                    <div className="px-4 pb-3 flex flex-col gap-2 border-t border-gray-700 pt-3">
+                      {s.messages.map((m, i) => (
+                        <div key={i} className="text-xs">
+                          <div className="text-gray-500 mb-1">{new Date(m.at).toLocaleString("zh-TW", { hour12: false })}</div>
+                          <div className="bg-blue-900/30 border border-blue-800/50 rounded-lg px-3 py-2 mb-1 text-gray-200 whitespace-pre-wrap"><b className="text-blue-300">客戶：</b>{m.q}</div>
+                          <div className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-gray-300 whitespace-pre-wrap"><b className="text-gray-400">Bot：</b>{m.a}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="px-6 py-3 border-t border-gray-800 text-xs text-gray-500">
+            💡 每個 session_id 對應一位獨立來源（LINE 用戶／網頁訪客／IG 用戶）。如果數字比實際客戶多，可能是有測試訊息或舊資料殘留。
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* ── AI 助手 Floating Widget ── */}
     <>

@@ -4,6 +4,7 @@ import { useState } from "react";
 
 const NAV = [
   { href: "/dashboard", icon: "🤖", label: "我的 Bot" },
+  { href: "/team",      icon: "👥", label: "團隊成員" },
   { href: "/account",   icon: "👤", label: "會員中心" },
 ];
 

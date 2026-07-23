@@ -33,6 +33,8 @@ export default function TeamPage() {
   const [newInviteUrl, setNewInviteUrl] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(true);
+  const [bound, setBound] = useState(false);
+  const [bindCode, setBindCode] = useState("");
 
   const canManage = myRole === "owner" || myRole === "admin";
 
@@ -45,6 +47,10 @@ export default function TeamPage() {
         const res = await axios.get(`${API}/orgs`, { headers: { Authorization: `Bearer ${t}` } });
         setOrgs(res.data);
         if (res.data.length > 0) setOrgId(res.data[0].id);
+        try {
+          const bs = await axios.get(`${API}/me/line-bind-status`, { headers: { Authorization: `Bearer ${t}` } });
+          setBound(bs.data.bound);
+        } catch { /* ignore */ }
       } finally {
         setLoading(false);
       }
@@ -118,6 +124,16 @@ export default function TeamPage() {
     } catch { /* ignore */ }
   };
 
+  const genBindCode = async () => {
+    setMsg("");
+    try {
+      const res = await axios.post(`${API}/me/line-bind-code`, {}, authHeader());
+      setBindCode(res.data.code);
+    } catch (e: any) {
+      setMsg(e?.response?.data?.detail || "產生綁定碼失敗");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-950 text-white flex">
       <Sidebar />
@@ -145,6 +161,32 @@ export default function TeamPage() {
             )}
 
             {msg && <p className="text-sm text-blue-300 mb-4">{msg}</p>}
+
+            {/* 綁定我的 LINE（管理助手 bot）*/}
+            <div className="bg-gray-900 rounded-xl p-5 mb-6">
+              <h2 className="font-semibold mb-1">綁定我的 LINE（管理助手）</h2>
+              <p className="text-xs text-gray-500 mb-3">
+                綁定後，就能用 LINE 的「管理助手」bot 直接接手客戶對話、代客回覆。
+                請先把管理助手 bot 加為好友，再產生綁定碼傳給它。
+              </p>
+              <div className="flex items-center gap-3 flex-wrap">
+                {bound && <span className="text-green-400 text-sm">✅ 已綁定</span>}
+                <button
+                  onClick={genBindCode}
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                    bound ? "bg-gray-800 hover:bg-gray-700 text-gray-200" : "bg-green-600 hover:bg-green-700"
+                  }`}
+                >
+                  {bound ? "重新綁定其他 LINE" : "綁定我的 LINE"}
+                </button>
+              </div>
+              {bindCode && (
+                <div className="mt-3 bg-gray-800 rounded-lg px-4 py-3">
+                  <p className="text-xs text-gray-400 mb-1">把這 6 碼傳給 LINE 管理助手 bot（15 分鐘內有效）：</p>
+                  <p className="text-3xl font-mono font-bold tracking-[0.3em] text-green-300">{bindCode}</p>
+                </div>
+              )}
+            </div>
 
             {/* 邀請成員 */}
             {canManage && (

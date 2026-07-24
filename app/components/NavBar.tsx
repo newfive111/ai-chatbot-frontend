@@ -29,7 +29,6 @@ export default function NavBar() {
         <img src="/logo.png" alt="攬得回" className="h-11 w-11 rounded-xl" />
       </a>
       <div className="flex gap-3 items-center">
-        <a href="/pricing" className="px-4 py-2 text-gray-300 hover:text-white transition text-sm">定價</a>
         <a href="/login"    className="px-4 py-2 text-gray-300 hover:text-white transition text-sm">登入</a>
         <a href="/register" className="px-5 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold transition">免費註冊</a>
       </div>

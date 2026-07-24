@@ -101,13 +101,6 @@ export default function Sidebar() {
               管理後台
             </a>
           )}
-          <a
-            href="/pricing"
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition"
-          >
-            <span className="text-base">💰</span>
-            定價方案
-          </a>
           <button
             onClick={logout}
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-400 hover:bg-gray-800 hover:text-red-400 transition w-full text-left"

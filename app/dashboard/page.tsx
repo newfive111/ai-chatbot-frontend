@@ -192,21 +192,6 @@ export default function DashboardPage() {
                   : "免費方案"}
               </span>
             </div>
-            <div className="flex gap-2">
-              <a
-                href="/pricing"
-                className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition font-medium"
-              >
-                + 新增 Bot 名額
-              </a>
-            </div>
-          </div>
-        )}
-
-        {/* 付款成功提示 */}
-        {typeof window !== "undefined" && new URLSearchParams(window.location.search).get("payment") === "success" && (
-          <div className="bg-green-900/30 border border-green-800 rounded-xl px-4 py-3 mb-6 text-sm text-green-400">
-            🎉 付款成功！訂閱已啟用，功能即刻生效。
           </div>
         )}
 
@@ -286,15 +271,6 @@ export default function DashboardPage() {
                           <span className="text-xs bg-green-900 text-green-400 px-2 py-1 rounded-full">✅ 已就緒</span>
                         ) : (
                           <span className="text-xs bg-yellow-900/50 text-yellow-400 px-2 py-1 rounded-full">⚙️ 設定中</span>
-                        )}
-                        {bot.plan === "free" && (
-                          <a
-                            href="/pricing"
-                            onClick={e => e.stopPropagation()}
-                            className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded-full transition"
-                          >
-                            ⚡ 啟用完整功能
-                          </a>
                         )}
                       </div>
                       <button

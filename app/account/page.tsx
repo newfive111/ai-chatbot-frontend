@@ -14,30 +14,9 @@ interface Profile {
   renews_at: string | null;
 }
 
-interface Order {
-  id: string;
-  plan: string;
-  billing_cycle: string;
-  amount: number;
-  status: string;
-  created_at: string;
-}
-
-const PLAN_LABEL: Record<string, string> = {
-  bot:      "Bot 訂閱",
-  business: "商業版",
-  free:     "免費版",
-};
-
-const CYCLE_LABEL: Record<string, string> = {
-  monthly: "月付",
-  annual:  "年付",
-};
-
 export default function AccountPage() {
   const router = useRouter();
   const [profile, setProfile]   = useState<Profile | null>(null);
-  const [orders, setOrders]     = useState<Order[]>([]);
   const [loading, setLoading]   = useState(true);
 
   // 修改密碼
@@ -59,13 +38,9 @@ export default function AccountPage() {
     const h = { Authorization: `Bearer ${t ?? token}` };
     setLoading(true);
     try {
-      const [pRes, oRes] = await Promise.all([
-        fetch(`${API}/me/profile`, { headers: h }),
-        fetch(`${API}/me/orders`,  { headers: h }),
-      ]);
+      const pRes = await fetch(`${API}/me/profile`, { headers: h });
       if (pRes.status === 401) { router.push("/login?redirect=/account"); return; }
       if (pRes.ok) setProfile(await pRes.json());
-      if (oRes.ok) setOrders(await oRes.json());
     } catch (e) {
       console.error(e);
     } finally {
@@ -164,39 +139,6 @@ export default function AccountPage() {
               </span>
             </div>
           </div>
-          {profile?.plan === "free" && (
-            <a
-              href="/pricing"
-              className="mt-4 block w-full text-center bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-semibold text-sm transition"
-            >
-              🚀 升級付費版
-            </a>
-          )}
-        </div>
-
-        {/* ── 付款紀錄 ── */}
-        <div className="bg-gray-900 rounded-2xl p-6">
-          <h2 className="font-semibold text-lg mb-4">🧾 付款紀錄</h2>
-          {orders.length === 0 ? (
-            <p className="text-gray-500 text-sm">目前沒有付款紀錄</p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {orders.map((o) => (
-                <div key={o.id} className="flex items-center justify-between bg-gray-800 rounded-xl px-4 py-3 text-sm">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="font-medium text-white">
-                      {PLAN_LABEL[o.plan] || o.plan}・{CYCLE_LABEL[o.billing_cycle] || o.billing_cycle}
-                    </span>
-                    <span className="text-gray-500 text-xs">{formatDate(o.created_at)}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-green-400 font-semibold">NT${o.amount.toLocaleString()}</span>
-                    <div className="text-gray-500 text-xs mt-0.5 font-mono">{o.id}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* ── 修改密碼 ── */}

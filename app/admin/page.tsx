@@ -12,6 +12,7 @@ interface UserRow {
   max_bots: number;
   bots_used: number;
   renews_at: string | null;
+  admin_note: string;
 }
 
 interface Stats {
@@ -29,6 +30,7 @@ export default function AdminPage() {
   const [search, setSearch] = useState("");
   const [updating, setUpdating] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
@@ -119,6 +121,49 @@ export default function AdminPage() {
     }
   };
 
+  const saveNote = async (userId: string) => {
+    const note = noteDraft[userId] ?? "";
+    setUpdating(userId);
+    try {
+      const res = await fetch(`${API}/admin/users/${userId}/note`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ note }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.detail || `HTTP ${res.status}`);
+      }
+      setUsers(u => u.map(r => (r.user_id === userId ? { ...r, admin_note: note } : r)));
+      setNoteDraft(d => { const n = { ...d }; delete n[userId]; return n; });
+    } catch (err: any) {
+      alert(err?.message || "備注儲存失敗");
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const deleteUser = async (userId: string, email: string) => {
+    if (!confirm(`確定要刪除帳號「${email}」嗎？\n\n這會一併刪除他的所有 Bot、知識庫、對話紀錄、團隊與訂閱，且無法復原。`)) return;
+    if (!confirm("再次確認：此操作無法復原，真的要刪除嗎？")) return;
+    setUpdating(userId);
+    try {
+      const res = await fetch(`${API}/admin/users/${userId}`, {
+        method: "DELETE",
+        headers,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.detail || `HTTP ${res.status}`);
+      }
+      setUsers(u => u.filter(r => r.user_id !== userId));
+    } catch (err: any) {
+      alert(err?.message || "刪除失敗");
+    } finally {
+      setUpdating(null);
+    }
+  };
+
   const filtered = (Array.isArray(users) ? users : []).filter(u =>
     (u.email || "").toLowerCase().includes(search.toLowerCase())
   );
@@ -185,13 +230,15 @@ export default function AdminPage() {
                 <th className="text-left px-4 py-3">到期日</th>
                 <th className="text-left px-4 py-3">手動授權</th>
                 <th className="text-left px-4 py-3">收款後延長</th>
+                <th className="text-left px-4 py-3">備注</th>
+                <th className="text-left px-4 py-3">操作</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="text-center py-12 text-gray-500">載入中...</td></tr>
+                <tr><td colSpan={8} className="text-center py-12 text-gray-500">載入中...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-12 text-gray-500">無用戶</td></tr>
+                <tr><td colSpan={8} className="text-center py-12 text-gray-500">無用戶</td></tr>
               ) : filtered.map(u => (
                 <tr key={u.user_id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition">
                   <td className="px-4 py-3">
@@ -261,6 +308,36 @@ export default function AdminPage() {
                         +1 年
                       </button>
                     </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1.5 items-center">
+                      <input
+                        type="text"
+                        placeholder="加備注…"
+                        value={noteDraft[u.user_id] ?? u.admin_note ?? ""}
+                        onChange={e => setNoteDraft(d => ({ ...d, [u.user_id]: e.target.value }))}
+                        className="bg-gray-800 text-white text-xs px-2 py-1.5 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 w-32"
+                      />
+                      {noteDraft[u.user_id] !== undefined && noteDraft[u.user_id] !== u.admin_note && (
+                        <button
+                          disabled={updating === u.user_id}
+                          onClick={() => saveNote(u.user_id)}
+                          className="text-xs bg-blue-700 hover:bg-blue-600 px-2 py-1.5 rounded-lg disabled:opacity-50 transition"
+                        >
+                          存
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      disabled={updating === u.user_id}
+                      onClick={() => deleteUser(u.user_id, u.email)}
+                      className="text-xs bg-red-900/60 hover:bg-red-800 text-red-300 border border-red-800 px-2.5 py-1.5 rounded-lg disabled:opacity-50 transition"
+                      title="徹底刪除此帳號與其所有資料"
+                    >
+                      刪除
+                    </button>
                   </td>
                 </tr>
               ))}

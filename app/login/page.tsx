@@ -11,6 +11,11 @@ function LoginForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // 把目前的 redirect 參數原樣帶去註冊頁（只允許站內路徑）
+  const rawRedirect = searchParams.get("redirect");
+  const safeRedirect = rawRedirect && rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") ? rawRedirect : "";
+  const redirectQuery = safeRedirect ? `?redirect=${encodeURIComponent(safeRedirect)}` : "";
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -97,7 +102,7 @@ function LoginForm() {
           <a href="/forgot-password" className="text-gray-500 hover:text-gray-300 transition">忘記密碼？</a>
         </p>
         <p className="mt-2 text-gray-400 text-sm text-center">
-          沒有帳號？<a href="/register" className="text-blue-400 hover:underline">免費註冊</a>
+          沒有帳號？<a href={`/register${redirectQuery}`} className="text-blue-400 hover:underline">免費註冊</a>
         </p>
       </div>
     </main>

@@ -32,11 +32,16 @@ export default function InvitePage() {
     })();
   }, [token]);
 
+  const goLogin = () => {
+    // 未登入 / token 過期 → 清掉舊 token，去登入頁，登入後導回本頁接續
+    localStorage.removeItem("token");
+    router.push(`/login?redirect=/invite/${token}`);
+  };
+
   const handleAccept = async () => {
     const authToken = localStorage.getItem("token");
     if (!authToken) {
-      // 未登入 → 先去登入，登入後導回本頁
-      router.push(`/login?redirect=/invite/${token}`);
+      goLogin();
       return;
     }
     setAccepting(true);
@@ -47,6 +52,11 @@ export default function InvitePage() {
       });
       router.push("/dashboard");
     } catch (e: any) {
+      // token 過期/無效 → 當成未登入，導去登入再回來，而不是卡死在錯誤畫面
+      if (e?.response?.status === 401) {
+        goLogin();
+        return;
+      }
       setError(e?.response?.data?.detail || "接受邀請失敗");
       setAccepting(false);
     }

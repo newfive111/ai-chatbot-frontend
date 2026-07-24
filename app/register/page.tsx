@@ -1,18 +1,28 @@
 "use client";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import axios from "axios";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // 只允許站內路徑，防止 open redirect 攻擊
+  const rawRedirect = searchParams.get("redirect");
+  const safeRedirect = rawRedirect && rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") ? rawRedirect : "/dashboard";
+  const redirectQuery = safeRedirect !== "/dashboard" ? `?redirect=${encodeURIComponent(safeRedirect)}` : "";
+
   const handleLineLogin = async () => {
     setError("");
     try {
+      // 保留邀請/導向目標，登入完成後接續
+      if (safeRedirect !== "/dashboard") {
+        sessionStorage.setItem("post_login_redirect", safeRedirect);
+      }
       const res = await axios.get("/api/proxy/auth/line/login");
       window.location.href = res.data.auth_url;
     } catch {
@@ -27,7 +37,7 @@ export default function RegisterPage() {
     try {
       const res = await axios.post("/api/proxy/auth/register", { email, password });
       localStorage.setItem("token", res.data.token);
-      router.push("/dashboard");
+      router.push(safeRedirect);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       if (msg?.includes("already") || msg?.includes("已存在") || msg?.includes("exist")) {
@@ -94,9 +104,17 @@ export default function RegisterPage() {
         </button>
 
         <p className="mt-5 text-gray-400 text-sm text-center">
-          已有帳號？<a href="/login" className="text-blue-400 hover:underline">登入</a>
+          已有帳號？<a href={`/login${redirectQuery}`} className="text-blue-400 hover:underline">登入</a>
         </p>
       </div>
     </main>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
   );
 }

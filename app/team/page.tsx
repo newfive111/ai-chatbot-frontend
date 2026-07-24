@@ -43,14 +43,18 @@ export default function TeamPage() {
     if (!t) { router.push("/login?redirect=/team"); return; }
     setToken(t);
     (async () => {
+      const auth = { headers: { Authorization: `Bearer ${t}` } };
       try {
-        const res = await axios.get(`${API}/orgs`, { headers: { Authorization: `Bearer ${t}` } });
-        setOrgs(res.data);
-        if (res.data.length > 0) setOrgId(res.data[0].id);
-        try {
-          const bs = await axios.get(`${API}/me/line-bind-status`, { headers: { Authorization: `Bearer ${t}` } });
-          setBound(bs.data.bound);
-        } catch { /* ignore */ }
+        // 兩個請求平行發，別讓綁定狀態等團隊清單回來才開始
+        const [orgRes, bindRes] = await Promise.allSettled([
+          axios.get(`${API}/orgs`, auth),
+          axios.get(`${API}/me/line-bind-status`, auth),
+        ]);
+        if (orgRes.status === "fulfilled") {
+          setOrgs(orgRes.value.data);
+          if (orgRes.value.data.length > 0) setOrgId(orgRes.value.data[0].id);
+        }
+        if (bindRes.status === "fulfilled") setBound(bindRes.value.data.bound);
       } finally {
         setLoading(false);
       }

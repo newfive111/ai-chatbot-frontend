@@ -1,6 +1,6 @@
 "use client";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const NAV = [
   { href: "/dashboard", icon: "🤖", label: "我的 Bot" },
@@ -12,6 +12,17 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router   = useRouter();
   const [open, setOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // 只有平台管理員（後端比對 ADMIN_EMAIL）才顯示管理後台 tab
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) return;
+    fetch("/api/proxy/me/profile", { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => setIsAdmin(!!d?.is_admin))
+      .catch(() => {});
+  }, []);
 
   const logout = () => {
     localStorage.removeItem("token");
@@ -76,6 +87,20 @@ export default function Sidebar() {
 
         {/* Bottom */}
         <div className="px-3 py-4 border-t border-gray-800 flex flex-col gap-1">
+          {isAdmin && (
+            <a
+              href="/admin"
+              onClick={() => setOpen(false)}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition ${
+                pathname.startsWith("/admin")
+                  ? "bg-purple-600 text-white"
+                  : "text-gray-400 hover:bg-gray-800 hover:text-white"
+              }`}
+            >
+              <span className="text-base">⚙️</span>
+              管理後台
+            </a>
+          )}
           <a
             href="/pricing"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition"

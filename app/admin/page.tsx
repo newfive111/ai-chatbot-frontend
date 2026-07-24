@@ -170,7 +170,7 @@ export default function AdminPage() {
 
   return (
     <main className="min-h-screen bg-gray-950 text-white px-4 py-8">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
 
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
@@ -220,10 +220,10 @@ export default function AdminPage() {
         />
 
         {/* User Table */}
-        <div className="bg-gray-900 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-gray-900 rounded-xl overflow-x-auto">
+          <table className="w-full text-sm min-w-[900px]">
             <thead>
-              <tr className="border-b border-gray-800 text-gray-400 text-xs">
+              <tr className="border-b border-gray-800 text-gray-400 text-xs whitespace-nowrap">
                 <th className="text-left px-4 py-3">Email</th>
                 <th className="text-left px-4 py-3">Bot 使用</th>
                 <th className="text-left px-4 py-3">付費名額</th>
@@ -240,7 +240,7 @@ export default function AdminPage() {
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={8} className="text-center py-12 text-gray-500">無用戶</td></tr>
               ) : filtered.map(u => (
-                <tr key={u.user_id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition">
+                <tr key={u.user_id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition whitespace-nowrap">
                   <td className="px-4 py-3">
                     <div className="font-medium">{u.email || "—"}</div>
                     <div className="text-gray-500 text-xs">{u.created_at ? new Date(u.created_at).toLocaleDateString("zh-TW") : "—"}</div>

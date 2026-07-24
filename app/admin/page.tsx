@@ -83,6 +83,33 @@ export default function AdminPage() {
     }
   };
 
+  const extend = async (userId: string, days: number) => {
+    setUpdating(userId);
+    try {
+      const res = await fetch(`${API}/admin/users/${userId}/extend`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ days, slots: 1 }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.detail || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      setUsers(u =>
+        u.map(r =>
+          r.user_id === userId
+            ? { ...r, renews_at: data.renews_at, bot_slots: r.bot_slots > 0 ? r.bot_slots : 1, max_bots: r.bot_slots > 0 ? r.max_bots : 2 }
+            : r
+        )
+      );
+    } catch (err: any) {
+      alert(err?.message || "延長失敗");
+    } finally {
+      setUpdating(null);
+    }
+  };
+
   const filtered = users.filter(u =>
     (u.email || "").toLowerCase().includes(search.toLowerCase())
   );
@@ -136,15 +163,16 @@ export default function AdminPage() {
                 <th className="text-left px-4 py-3">Email</th>
                 <th className="text-left px-4 py-3">Bot 使用</th>
                 <th className="text-left px-4 py-3">付費名額</th>
-                <th className="text-left px-4 py-3">續費日</th>
+                <th className="text-left px-4 py-3">到期日</th>
                 <th className="text-left px-4 py-3">手動授權</th>
+                <th className="text-left px-4 py-3">收款後延長</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={5} className="text-center py-12 text-gray-500">載入中...</td></tr>
+                <tr><td colSpan={6} className="text-center py-12 text-gray-500">載入中...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={5} className="text-center py-12 text-gray-500">無用戶</td></tr>
+                <tr><td colSpan={6} className="text-center py-12 text-gray-500">無用戶</td></tr>
               ) : filtered.map(u => (
                 <tr key={u.user_id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition">
                   <td className="px-4 py-3">
@@ -167,10 +195,16 @@ export default function AdminPage() {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">
-                    {u.renews_at
-                      ? new Date(u.renews_at).toLocaleDateString("zh-TW")
-                      : "—"}
+                  <td className="px-4 py-3 text-xs">
+                    {(() => {
+                      if (!u.renews_at) return <span className="text-gray-500">永久 / 無到期</span>;
+                      const exp = new Date(u.renews_at);
+                      const daysLeft = Math.ceil((exp.getTime() - Date.now()) / 86400000);
+                      const dateStr = exp.toLocaleDateString("zh-TW");
+                      if (daysLeft < 0) return <span className="text-red-400">已到期 {dateStr}</span>;
+                      if (daysLeft <= 7) return <span className="text-yellow-400">{dateStr}（剩 {daysLeft} 天）</span>;
+                      return <span className="text-gray-400">{dateStr}（剩 {daysLeft} 天）</span>;
+                    })()}
                   </td>
                   <td className="px-4 py-3">
                     <select
@@ -188,6 +222,26 @@ export default function AdminPage() {
                     {updating === u.user_id && (
                       <span className="ml-2 text-xs text-gray-500">更新中…</span>
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1.5">
+                      <button
+                        disabled={updating === u.user_id}
+                        onClick={() => extend(u.user_id, 30)}
+                        className="text-xs bg-green-700 hover:bg-green-600 px-2.5 py-1.5 rounded-lg disabled:opacity-50 transition"
+                        title="收到轉帳後，幫這位租客延長 30 天"
+                      >
+                        +30 天
+                      </button>
+                      <button
+                        disabled={updating === u.user_id}
+                        onClick={() => extend(u.user_id, 365)}
+                        className="text-xs bg-gray-700 hover:bg-gray-600 px-2.5 py-1.5 rounded-lg disabled:opacity-50 transition"
+                        title="延長一年"
+                      >
+                        +1 年
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

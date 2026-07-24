@@ -198,6 +198,8 @@ export default function BotDetailPage() {
   const [lineToken, setLineToken] = useState("");
   const [savingLine, setSavingLine] = useState(false);
   const [lineConfigured, setLineConfigured] = useState(false);
+  const [lineVerifying, setLineVerifying] = useState(false);
+  const [lineVerify, setLineVerify] = useState<{ oa_name?: string; oa_picture?: string; webhook_set?: boolean; webhook_active?: boolean; warnings?: string[] } | null>(null);
 
   // Instagram
   const [debounceSeconds, setDebounceSeconds] = useState(15);
@@ -689,12 +691,33 @@ export default function BotDetailPage() {
       setLineConfigured(true);
       setLineSecret("");
       setLineToken("");
-      setMessage("✅ LINE 設定已儲存");
+      setMessage("✅ LINE 設定已儲存，正在測試連線...");
+      await verifyLine();
     } catch (err: any) {
       setMessage(`❌ ${err?.response?.data?.detail || "儲存失敗"}`);
     } finally {
       setSavingLine(false);
       setTimeout(() => setMessage(""), 3000);
+    }
+  };
+
+  // ── Settings：測試 LINE 連線 + 自動設定 Webhook ──
+  const verifyLine = async () => {
+    setLineVerifying(true);
+    try {
+      const res = await axios.post(`${API}/bots/${id}/line/verify`, {}, { headers });
+      setLineVerify(res.data);
+      if (res.data.webhook_active) {
+        setMessage(`✅ 已連上「${res.data.oa_name}」，Webhook 也設定好了，可以開始用了！`);
+      } else {
+        setMessage(`✅ 已連上「${res.data.oa_name}」，但 Webhook 還需要處理，請看下方提示`);
+      }
+    } catch (err: any) {
+      setLineVerify(null);
+      setMessage(`❌ ${err?.response?.data?.detail || "測試連線失敗"}`);
+    } finally {
+      setLineVerifying(false);
+      setTimeout(() => setMessage(""), 4000);
     }
   };
 
@@ -1982,7 +2005,7 @@ export default function BotDetailPage() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">4</span>
-                    <span>儲存後，將下方 Webhook URL 貼到「Messaging API」→「Webhook URL」，並開啟「Use webhook」</span>
+                    <span>貼上 secret 和 token 後按「💾 儲存並自動設定」，系統會自動幫你設好 Webhook URL 並測試連線（不用再手動貼）</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">5</span>
@@ -2031,13 +2054,66 @@ export default function BotDetailPage() {
                 />
               </div>
 
-              <button
-                onClick={saveLineConfig}
-                disabled={savingLine || (!lineSecret.trim() && !lineToken.trim())}
-                className="w-full bg-green-600 hover:bg-green-700 py-3 rounded-lg font-semibold transition disabled:opacity-50 mb-5"
-              >
-                {savingLine ? "儲存中..." : "💾 儲存 LINE 設定"}
-              </button>
+              <div className="flex gap-2 mb-5">
+                <button
+                  onClick={saveLineConfig}
+                  disabled={savingLine || lineVerifying || (!lineSecret.trim() && !lineToken.trim())}
+                  className="flex-1 bg-green-600 hover:bg-green-700 py-3 rounded-lg font-semibold transition disabled:opacity-50"
+                >
+                  {savingLine ? "儲存中..." : "💾 儲存並自動設定"}
+                </button>
+                {lineConfigured && (
+                  <button
+                    onClick={verifyLine}
+                    disabled={savingLine || lineVerifying}
+                    className="px-4 py-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-sm font-medium transition disabled:opacity-50"
+                    title="用已儲存的 token 測試 LINE 連線並自動設定 Webhook"
+                  >
+                    {lineVerifying ? "測試中..." : "🔍 測試連線"}
+                  </button>
+                )}
+              </div>
+
+              {/* 連線測試結果 */}
+              {lineVerify && (
+                <div className="bg-gray-800 rounded-xl p-4 mb-5 border border-gray-700">
+                  <div className="flex items-center gap-3 mb-3">
+                    {lineVerify.oa_picture ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={lineVerify.oa_picture} alt="OA" className="w-10 h-10 rounded-full" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-green-700 flex items-center justify-center text-lg">📱</div>
+                    )}
+                    <div>
+                      <p className="text-sm text-gray-400">已連上 LINE 官方帳號</p>
+                      <p className="font-semibold text-white">{lineVerify.oa_name || "（未知）"}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1.5 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className={lineVerify.webhook_set ? "text-green-400" : "text-yellow-400"}>
+                        {lineVerify.webhook_set ? "✓" : "!"}
+                      </span>
+                      <span className="text-gray-300">
+                        {lineVerify.webhook_set ? "Webhook URL 已自動設定完成" : "Webhook URL 需手動設定（見上方步驟 4）"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={lineVerify.webhook_active ? "text-green-400" : "text-yellow-400"}>
+                        {lineVerify.webhook_active ? "✓" : "!"}
+                      </span>
+                      <span className="text-gray-300">
+                        {lineVerify.webhook_active ? "Webhook 連線測試通過，可以開始收訊息了" : "請到 LINE 後台開啟「使用 webhook」"}
+                      </span>
+                    </div>
+                  </div>
+                  {lineVerify.warnings && lineVerify.warnings.length > 0 && (
+                    <ul className="mt-3 pt-3 border-t border-gray-700 flex flex-col gap-1 text-xs text-yellow-300/80">
+                      {lineVerify.warnings.map((w, i) => <li key={i}>⚠ {w}</li>)}
+                    </ul>
+                  )}
+                </div>
+              )}
 
               {/* Webhook URL */}
               <div>

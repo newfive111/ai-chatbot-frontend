@@ -22,6 +22,14 @@ interface Stats {
   total_slots: number;
 }
 
+interface OrgMap {
+  org_id: string;
+  org_name: string;
+  owner_label: string;
+  member_count: number;
+  members: { role: string; label: string }[];
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
@@ -31,6 +39,8 @@ export default function AdminPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
+  const [orgMap, setOrgMap] = useState<OrgMap[] | null>(null);
+  const [orgMapOpen, setOrgMapOpen] = useState(false);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
@@ -118,6 +128,19 @@ export default function AdminPage() {
       alert(err?.message || "延長失敗");
     } finally {
       setUpdating(null);
+    }
+  };
+
+  const toggleOrgMap = async () => {
+    const next = !orgMapOpen;
+    setOrgMapOpen(next);
+    if (next && orgMap === null) {
+      try {
+        const res = await fetch(`${API}/admin/orgs-map`, { headers });
+        setOrgMap(res.ok ? await res.json() : []);
+      } catch {
+        setOrgMap([]);
+      }
     }
   };
 
@@ -209,6 +232,47 @@ export default function AdminPage() {
             ))}
           </div>
         )}
+
+        {/* 團隊結構診斷 */}
+        <div className="mb-4">
+          <button
+            onClick={toggleOrgMap}
+            className="text-sm bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg transition"
+          >
+            {orgMapOpen ? "▲ 收起團隊結構" : "▼ 顯示團隊結構（診斷：誰的團隊、有哪些成員）"}
+          </button>
+          {orgMapOpen && (
+            <div className="mt-3 bg-gray-900 rounded-xl p-4">
+              {orgMap === null ? (
+                <p className="text-gray-500 text-sm">載入中…</p>
+              ) : orgMap.length === 0 ? (
+                <p className="text-gray-500 text-sm">沒有團隊資料</p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {orgMap.map(o => (
+                    <div key={o.org_id} className="border border-gray-800 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-semibold">{o.org_name}</span>
+                        <span className="text-xs text-gray-500">{o.member_count} 位成員</span>
+                      </div>
+                      <p className="text-xs text-gray-400 mb-2">擁有者：{o.owner_label}</p>
+                      <div className="flex flex-col gap-1">
+                        {o.members.map((m, i) => (
+                          <div key={i} className="flex items-center gap-2 text-xs">
+                            <span className={`px-1.5 py-0.5 rounded ${m.role === "owner" ? "bg-yellow-900/40 text-yellow-300" : "bg-gray-800 text-gray-300"}`}>
+                              {m.role}
+                            </span>
+                            <span className="text-gray-300 truncate">{m.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Search */}
         <input

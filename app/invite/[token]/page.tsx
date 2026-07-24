@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -12,12 +12,14 @@ const ROLE_LABEL: Record<string, string> = {
 export default function InvitePage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const token = params.token as string;
 
   const [loading, setLoading] = useState(true);
   const [info, setInfo] = useState<{ org_name: string; role: string } | null>(null);
   const [error, setError] = useState("");
   const [accepting, setAccepting] = useState(false);
+  const autoTried = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -33,9 +35,10 @@ export default function InvitePage() {
   }, [token]);
 
   const goLogin = () => {
-    // 未登入 / token 過期 → 清掉舊 token，去登入頁，登入後導回本頁接續
+    // 未登入 / token 過期 → 清掉舊 token，去登入頁，登入後導回本頁並自動接受
     localStorage.removeItem("token");
-    router.push(`/login?redirect=/invite/${token}`);
+    const back = encodeURIComponent(`/invite/${token}?accept=1`);
+    router.push(`/login?redirect=${back}`);
   };
 
   const handleAccept = async () => {
@@ -61,6 +64,17 @@ export default function InvitePage() {
       setAccepting(false);
     }
   };
+
+  // 從登入頁導回（帶 accept=1）且已登入 → 自動接受，免再按一次
+  useEffect(() => {
+    if (autoTried.current) return;
+    if (loading || error || !info) return;
+    if (searchParams.get("accept") !== "1") return;
+    if (!localStorage.getItem("token")) return;
+    autoTried.current = true;
+    handleAccept();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, error, info]);
 
   return (
     <main className="min-h-screen bg-gray-950 text-white flex items-center justify-center px-4">

@@ -17,7 +17,7 @@ const ASSIGNABLE_ROLES = ["admin", "editor", "viewer"];
 interface Org { id: string; name: string; is_owner: boolean; role: string; }
 interface Member {
   user_id: string; role: string; display_name: string;
-  email: string | null; picture_url: string | null;
+  email: string | null; picture_url: string | null; note: string;
 }
 interface Invite { token: string; role: string; expires_at: string; }
 
@@ -35,6 +35,7 @@ export default function TeamPage() {
   const [loading, setLoading] = useState(true);
   const [bound, setBound] = useState(false);
   const [bindCode, setBindCode] = useState("");
+  const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
 
   const canManage = myRole === "owner" || myRole === "admin";
 
@@ -108,6 +109,18 @@ export default function TeamPage() {
       loadMembers();
     } catch (e: any) {
       setMsg(e?.response?.data?.detail || "變更失敗");
+    }
+  };
+
+  const saveNote = async (uid: string) => {
+    const note = noteDraft[uid] ?? "";
+    try {
+      await axios.patch(`${API}/orgs/${orgId}/members/${uid}/note`, { note }, authHeader());
+      setMembers(ms => ms.map(m => (m.user_id === uid ? { ...m, note } : m)));
+      setNoteDraft(d => { const n = { ...d }; delete n[uid]; return n; });
+      setMsg("✅ 已儲存備注");
+    } catch (e: any) {
+      setMsg(e?.response?.data?.detail || "備注儲存失敗");
     }
   };
 
@@ -250,12 +263,31 @@ export default function TeamPage() {
                       <img src={m.picture_url} alt="" className="w-9 h-9 rounded-full" />
                     ) : (
                       <div className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center text-sm">
-                        {m.display_name.slice(0, 1)}
+                        {(m.note || m.display_name).slice(0, 1)}
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{m.display_name}</p>
+                      <p className="text-sm font-medium truncate">{m.note || m.display_name}</p>
                       {m.email && <p className="text-xs text-gray-500 truncate">{m.email}</p>}
+                      {canManage && (
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          <input
+                            type="text"
+                            placeholder="備注（例：這是小明的 LINE）"
+                            value={noteDraft[m.user_id] ?? m.note ?? ""}
+                            onChange={e => setNoteDraft(d => ({ ...d, [m.user_id]: e.target.value }))}
+                            className="bg-gray-800 text-xs px-2 py-1 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 w-full max-w-xs"
+                          />
+                          {noteDraft[m.user_id] !== undefined && noteDraft[m.user_id] !== (m.note ?? "") && (
+                            <button
+                              onClick={() => saveNote(m.user_id)}
+                              className="text-xs bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded-lg shrink-0 transition"
+                            >
+                              存
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {m.role === "owner" ? (

@@ -28,6 +28,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [updating, setUpdating] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState("");
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
@@ -39,6 +40,7 @@ export default function AdminPage() {
 
   const fetchAll = async () => {
     setLoading(true);
+    setErrorMsg("");
     try {
       const [sRes, uRes] = await Promise.all([
         fetch(`${API}/admin/stats`, { headers }),
@@ -48,10 +50,17 @@ export default function AdminPage() {
         router.push("/dashboard");
         return;
       }
-      setStats(await sRes.json());
-      setUsers(await uRes.json());
+      if (!sRes.ok || !uRes.ok) {
+        setErrorMsg(`載入失敗（伺服器回應 ${!uRes.ok ? uRes.status : sRes.status}），可稍後重試`);
+        return;
+      }
+      // 防呆：後端萬一回傳非預期格式也不讓頁面崩潰
+      const sData = await sRes.json().catch(() => null);
+      const uData = await uRes.json().catch(() => null);
+      setStats(sData && typeof sData === "object" && !Array.isArray(sData) ? sData : null);
+      setUsers(Array.isArray(uData) ? uData : []);
     } catch {
-      alert("載入失敗");
+      setErrorMsg("載入失敗，請檢查網路後重試");
     } finally {
       setLoading(false);
     }
@@ -110,7 +119,7 @@ export default function AdminPage() {
     }
   };
 
-  const filtered = users.filter(u =>
+  const filtered = (Array.isArray(users) ? users : []).filter(u =>
     (u.email || "").toLowerCase().includes(search.toLowerCase())
   );
 
@@ -128,6 +137,16 @@ export default function AdminPage() {
             ← 回 Dashboard
           </button>
         </div>
+
+        {/* 錯誤提示（不再白屏崩潰）*/}
+        {errorMsg && (
+          <div className="bg-red-900/30 border border-red-800 text-red-300 rounded-xl px-4 py-3 mb-6 flex items-center justify-between">
+            <span className="text-sm">⚠️ {errorMsg}</span>
+            <button onClick={fetchAll} className="text-sm bg-red-800 hover:bg-red-700 px-3 py-1.5 rounded-lg transition">
+              重新載入
+            </button>
+          </div>
+        )}
 
         {/* Stats */}
         {stats && (

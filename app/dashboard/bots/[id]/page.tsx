@@ -1365,18 +1365,19 @@ export default function BotDetailPage() {
                         {!sess.muted && (
                           <p className="text-[11px] text-amber-400 mb-2">⚠️ 傳送後會自動「接手」，AI 暫停回覆此客戶（可按上方「恢復 AI 回覆」放回自動）。</p>
                         )}
-                        <div className="flex gap-2">
-                          <input
+                        <div className="flex gap-2 items-end">
+                          <textarea
                             value={inboxDraft}
                             onChange={(e) => setInboxDraft(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendInboxReply(); } }}
-                            placeholder="輸入要傳給客戶的訊息…"
-                            className="flex-1 bg-gray-800 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-blue-500"
+                            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); sendInboxReply(); } }}
+                            placeholder="輸入要傳給客戶的訊息…（Enter 送出，Shift+Enter 換行）"
+                            rows={1}
+                            className="flex-1 bg-gray-800 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-blue-500 resize-none max-h-40 leading-relaxed"
                           />
                           <button
                             onClick={sendInboxReply}
                             disabled={inboxSending || !inboxDraft.trim()}
-                            className="bg-blue-600 hover:bg-blue-700 px-5 rounded-lg text-sm font-semibold transition disabled:opacity-50"
+                            className="bg-blue-600 hover:bg-blue-700 px-5 py-2.5 rounded-lg text-sm font-semibold transition disabled:opacity-50"
                           >
                             {inboxSending ? "傳送中…" : "傳送"}
                           </button>

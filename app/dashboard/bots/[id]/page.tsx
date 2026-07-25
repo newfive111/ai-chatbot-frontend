@@ -177,6 +177,7 @@ export default function BotDetailPage() {
   const [inboxDraft, setInboxDraft] = useState("");
   const [inboxSending, setInboxSending] = useState(false);
   const [inboxMuting, setInboxMuting] = useState(false);
+  const [inboxError, setInboxError] = useState("");
   const inboxScrollRef = useRef<HTMLDivElement>(null);
   const [faqText, setFaqText] = useState("");
   const [question, setQuestion] = useState("");
@@ -912,6 +913,7 @@ export default function BotDetailPage() {
     const text = inboxDraft.trim();
     if (!sess || !text || inboxSending) return;
     setInboxSending(true);
+    setInboxError("");
     setInboxSessions((prev) => prev.map((s) =>
       s.session_id === sess.session_id
         ? { ...s, muted: true, messages: [...s.messages, { q: "（真人 代回）", a: text, at: new Date().toISOString() }] }
@@ -921,8 +923,10 @@ export default function BotDetailPage() {
       await axios.post(`${API}/bots/${id}/reply`, { session_id: sess.session_id, text }, { headers });
       fetchInbox(true);
     } catch (err: any) {
-      setMessage(`❌ ${err?.response?.data?.detail || "傳送失敗"}`);
-      setTimeout(() => setMessage(""), 3000);
+      const detail = err?.response?.data?.detail || err?.message || "傳送失敗";
+      const code = err?.response?.status ? `（HTTP ${err.response.status}）` : "";
+      setInboxError(`❌ 代回失敗${code}：${detail}`);
+      setInboxDraft(text); // 把打好的字還給使用者，方便重試
       fetchInbox(true);
     } finally {
       setInboxSending(false);
@@ -1355,6 +1359,9 @@ export default function BotDetailPage() {
                       </div>
 
                       <div className="border-t border-gray-800 p-3">
+                        {inboxError && (
+                          <p className="text-xs text-red-300 bg-red-900/40 border border-red-800 rounded-lg px-3 py-2 mb-2 break-words">{inboxError}</p>
+                        )}
                         {!sess.muted && (
                           <p className="text-[11px] text-amber-400 mb-2">⚠️ 傳送後會自動「接手」，AI 暫停回覆此客戶（可按上方「恢復 AI 回覆」放回自動）。</p>
                         )}

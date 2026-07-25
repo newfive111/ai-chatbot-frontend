@@ -125,7 +125,7 @@ export default function BotDetailPage() {
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const assistantScrollRef = useRef<HTMLDivElement>(null);
 
-  const [tab, setTab] = useState<"knowledge" | "persona" | "chat" | "embed" | "settings" | "analytics">("knowledge");
+  const [tab, setTab] = useState<"knowledge" | "inbox" | "persona" | "chat" | "embed" | "settings" | "analytics">("knowledge");
 
   // AI 助手 floating widget
   const [assistantOpen, setAssistantOpen] = useState(false);
@@ -165,6 +165,19 @@ export default function BotDetailPage() {
     }[];
   } | null>(null);
   const [expandedSid, setExpandedSid] = useState<string | null>(null);
+  // ── 客服對話（inbox）──
+  type InboxSession = {
+    session_id: string; channel: string; muted?: boolean; can_mute?: boolean;
+    display_name?: string; line_user_id?: string; last_at: string;
+    messages: { q: string; a: string; at: string }[];
+  };
+  const [inboxSessions, setInboxSessions] = useState<InboxSession[]>([]);
+  const [inboxSel, setInboxSel] = useState<string | null>(null);
+  const [inboxLoading, setInboxLoading] = useState(false);
+  const [inboxDraft, setInboxDraft] = useState("");
+  const [inboxSending, setInboxSending] = useState(false);
+  const [inboxMuting, setInboxMuting] = useState(false);
+  const inboxScrollRef = useRef<HTMLDivElement>(null);
   const [faqText, setFaqText] = useState("");
   const [question, setQuestion] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -204,6 +217,8 @@ export default function BotDetailPage() {
   // Instagram
   const [debounceSeconds, setDebounceSeconds] = useState(15);
   const [savingDebounce, setSavingDebounce] = useState(false);
+  const [observeMode, setObserveMode] = useState(false);
+  const [savingObserve, setSavingObserve] = useState(false);
   const [instagramPageToken, setInstagramPageToken] = useState("");
   const [savingInstagram, setSavingInstagram] = useState(false);
   const [instagramConfigured, setInstagramConfigured] = useState(false);
@@ -322,6 +337,7 @@ export default function BotDetailPage() {
       setKeywordTriggers(data.keyword_triggers || []);
       setOffHoursMessage(data.off_hours_message || "");
       setDebounceSeconds(data.debounce_seconds ?? 15);
+      setObserveMode(!!data.observe_mode);
       setInstagramConfigured(!!data.instagram_page_token);
     } catch (err: any) {
       console.error("[BotDetail] 載入 Bot 設定失敗", err?.response?.status, err?.message);
@@ -735,6 +751,23 @@ export default function BotDetailPage() {
     }
   };
 
+  // ── Settings：切換觀察模式（AI 不回覆，只記錄＋通知員工代回）──
+  const toggleObserve = async (next: boolean) => {
+    setSavingObserve(true);
+    const prev = observeMode;
+    setObserveMode(next);
+    try {
+      await axios.patch(`${API}/bots/${id}`, { observe_mode: next }, { headers });
+      setMessage(next ? "✅ 已開啟觀察模式：AI 暫停回覆，改由員工代回" : "✅ 已關閉觀察模式：AI 恢復自動回覆");
+    } catch (err: any) {
+      setObserveMode(prev);
+      setMessage(`❌ ${err?.response?.data?.detail || "儲存失敗"}`);
+    } finally {
+      setSavingObserve(false);
+      setTimeout(() => setMessage(""), 3000);
+    }
+  };
+
   const saveOffHours = async () => {
     setSavingOffHours(true);
     try {
@@ -836,6 +869,84 @@ export default function BotDetailPage() {
       alert(`❌ ${err?.response?.data?.detail || "操作失敗"}`);
     }
     setMutingSid(null);
+  };
+
+  // ── 客服對話（inbox）：抓取 / 輪詢 / 代回 / 接手 ──
+  const fetchInbox = async (silent = false) => {
+    if (!id) return;
+    if (!silent) setInboxLoading(true);
+    try {
+      const res = await axios.get(`${API}/bots/${id}/conversations/sessions`, {
+        params: { days: 14 }, headers,
+      });
+      const all = (res.data?.sessions || []) as InboxSession[];
+      const line = all
+        .filter((s) => s.line_user_id || s.channel === "LINE")
+        .sort((a, b) => (b.last_at || "").localeCompare(a.last_at || ""));
+      setInboxSessions(line);
+    } catch (err: any) {
+      if (!silent) {
+        setMessage(`❌ ${err?.response?.data?.detail || "讀取失敗"}`);
+        setTimeout(() => setMessage(""), 3000);
+      }
+    } finally {
+      if (!silent) setInboxLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab !== "inbox") return;
+    fetchInbox();
+    const timer = setInterval(() => fetchInbox(true), 5000);
+    return () => clearInterval(timer);
+  }, [tab, id]);
+
+  useEffect(() => {
+    if (tab === "inbox" && inboxScrollRef.current) {
+      inboxScrollRef.current.scrollTop = inboxScrollRef.current.scrollHeight;
+    }
+  }, [inboxSessions, inboxSel, tab]);
+
+  const sendInboxReply = async () => {
+    const sess = inboxSessions.find((s) => s.session_id === inboxSel);
+    const text = inboxDraft.trim();
+    if (!sess || !text || inboxSending) return;
+    setInboxSending(true);
+    setInboxSessions((prev) => prev.map((s) =>
+      s.session_id === sess.session_id
+        ? { ...s, muted: true, messages: [...s.messages, { q: "（真人 代回）", a: text, at: new Date().toISOString() }] }
+        : s));
+    setInboxDraft("");
+    try {
+      await axios.post(`${API}/bots/${id}/reply`, { session_id: sess.session_id, text }, { headers });
+      fetchInbox(true);
+    } catch (err: any) {
+      setMessage(`❌ ${err?.response?.data?.detail || "傳送失敗"}`);
+      setTimeout(() => setMessage(""), 3000);
+      fetchInbox(true);
+    } finally {
+      setInboxSending(false);
+    }
+  };
+
+  const toggleInboxMute = async (sess: InboxSession) => {
+    if (!id || inboxMuting) return;
+    setInboxMuting(true);
+    const currentlyMuted = !!sess.muted;
+    try {
+      if (currentlyMuted) {
+        await axios.delete(`${API}/bots/${id}/mute`, { params: { session_id: sess.session_id }, headers });
+      } else {
+        await axios.post(`${API}/bots/${id}/mute`, { session_id: sess.session_id }, { headers });
+      }
+      setInboxSessions((prev) => prev.map((s) =>
+        s.session_id === sess.session_id ? { ...s, muted: !currentlyMuted } : s));
+    } catch (err: any) {
+      setMessage(`❌ ${err?.response?.data?.detail || "操作失敗"}`);
+      setTimeout(() => setMessage(""), 3000);
+    } finally {
+      setInboxMuting(false);
+    }
   };
 
   // ── 把分析報告帶入 AI 助手討論改善建議 ──
@@ -1031,7 +1142,7 @@ export default function BotDetailPage() {
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6 border-b border-gray-800 overflow-x-auto">
-          {(["knowledge", "persona", "chat", "embed", "settings", "analytics"] as const).map((t) => (
+          {(["knowledge", "inbox", "persona", "chat", "embed", "settings", "analytics"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -1042,7 +1153,7 @@ export default function BotDetailPage() {
                   : "border-transparent text-gray-500 hover:text-white"
               }`}
             >
-              {{ knowledge: "📚 知識庫", persona: "🤖 角色", chat: "💬 測試對話", embed: "🔗 嵌入代碼", settings: "⚙️ 設定", analytics: "📊 數據" }[t]}
+              {{ knowledge: "📚 知識庫", inbox: "📥 客服對話", persona: "🤖 角色", chat: "💬 測試對話", embed: "🔗 嵌入代碼", settings: "⚙️ 設定", analytics: "📊 數據" }[t]}
             </button>
           ))}
         </div>
@@ -1164,6 +1275,114 @@ export default function BotDetailPage() {
         )}
 
         {/* ── 角色 Tab ── */}
+        {/* ── 客服對話 Tab ── */}
+        {tab === "inbox" && (
+          <div className="bg-gray-900 rounded-xl overflow-hidden border border-gray-800" style={{ height: "620px" }}>
+            <div className="flex h-full">
+              {/* 左側：客戶清單 */}
+              <div className="w-64 shrink-0 border-r border-gray-800 flex flex-col">
+                <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
+                  <span className="font-semibold text-sm">📥 客服對話</span>
+                  <button onClick={() => fetchInbox()} className="text-xs text-gray-400 hover:text-white transition">↻</button>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  {inboxLoading && inboxSessions.length === 0 ? (
+                    <p className="text-gray-500 text-sm text-center py-8">載入中…</p>
+                  ) : inboxSessions.length === 0 ? (
+                    <p className="text-gray-500 text-sm text-center py-8 px-4">目前沒有 LINE 對話</p>
+                  ) : inboxSessions.map((s) => {
+                    const last = s.messages[s.messages.length - 1];
+                    const snippet = last ? (last.q?.startsWith("（真人") ? last.a : (last.q || last.a)) : "";
+                    const active = inboxSel === s.session_id;
+                    return (
+                      <button
+                        key={s.session_id}
+                        onClick={() => setInboxSel(s.session_id)}
+                        className={`w-full text-left px-4 py-3 border-b border-gray-800/50 transition ${active ? "bg-gray-800" : "hover:bg-gray-800/50"}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm truncate flex-1">{s.display_name || "LINE 客戶"}</span>
+                          {s.muted && <span className="text-[10px] text-amber-400 bg-amber-900/40 px-1.5 py-0.5 rounded shrink-0">手動</span>}
+                        </div>
+                        <p className="text-xs text-gray-500 truncate mt-0.5">{snippet || "（無內容）"}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 右側：對話內容 */}
+              <div className="flex-1 flex flex-col min-w-0">
+                {(() => {
+                  const sess = inboxSessions.find((s) => s.session_id === inboxSel);
+                  if (!sess) {
+                    return <div className="flex-1 flex items-center justify-center text-gray-500 text-sm px-6 text-center">← 從左邊選一個客戶，就能查看對話並直接回覆</div>;
+                  }
+                  return (
+                    <>
+                      <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between gap-2">
+                        <span className="font-semibold text-sm truncate">{sess.display_name || "LINE 客戶"}</span>
+                        <button
+                          onClick={() => toggleInboxMute(sess)}
+                          disabled={inboxMuting}
+                          className={`shrink-0 text-xs px-3 py-1.5 rounded-lg font-medium transition disabled:opacity-50 ${sess.muted ? "bg-green-700 hover:bg-green-600" : "bg-amber-600 hover:bg-amber-500"}`}
+                        >
+                          {sess.muted ? "▶️ 恢復 AI 回覆" : "✋ 接手（暫停 AI）"}
+                        </button>
+                      </div>
+
+                      <div ref={inboxScrollRef} className="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-950">
+                        {sess.messages.map((m, i) => {
+                          const isStaff = m.q?.startsWith("（真人");
+                          return (
+                            <div key={i} className="space-y-2">
+                              {m.q && !isStaff && (
+                                <div className="flex justify-start">
+                                  <div className="max-w-[78%] bg-gray-800 text-gray-100 rounded-2xl rounded-tl-sm px-4 py-2 text-sm whitespace-pre-wrap break-words">{m.q}</div>
+                                </div>
+                              )}
+                              {m.a && (
+                                <div className="flex justify-end">
+                                  <div className={`max-w-[78%] rounded-2xl rounded-tr-sm px-4 py-2 text-sm whitespace-pre-wrap break-words ${isStaff ? "bg-green-700 text-white" : "bg-blue-600 text-white"}`}>
+                                    {isStaff && <span className="block text-[10px] opacity-80 mb-0.5">👤 真人代回</span>}
+                                    {m.a}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="border-t border-gray-800 p-3">
+                        {!sess.muted && (
+                          <p className="text-[11px] text-amber-400 mb-2">⚠️ 傳送後會自動「接手」，AI 暫停回覆此客戶（可按上方「恢復 AI 回覆」放回自動）。</p>
+                        )}
+                        <div className="flex gap-2">
+                          <input
+                            value={inboxDraft}
+                            onChange={(e) => setInboxDraft(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendInboxReply(); } }}
+                            placeholder="輸入要傳給客戶的訊息…"
+                            className="flex-1 bg-gray-800 rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                          <button
+                            onClick={sendInboxReply}
+                            disabled={inboxSending || !inboxDraft.trim()}
+                            className="bg-blue-600 hover:bg-blue-700 px-5 rounded-lg text-sm font-semibold transition disabled:opacity-50"
+                          >
+                            {inboxSending ? "傳送中…" : "傳送"}
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
+
         {tab === "persona" && (
           <div className="flex flex-col gap-6">
             {message && <div className="bg-green-900 text-green-300 px-4 py-3 rounded-lg">{message}</div>}
@@ -2161,6 +2380,31 @@ export default function BotDetailPage() {
               >
                 {savingDebounce ? "儲存中..." : "💾 儲存防抖設定"}
               </button>
+            </div>
+
+            {/* 👀 觀察模式 */}
+            <div className="bg-gray-900 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="font-semibold">👀 觀察模式</h2>
+                <button
+                  onClick={() => toggleObserve(!observeMode)}
+                  disabled={savingObserve}
+                  className={`relative w-14 h-8 rounded-full transition disabled:opacity-50 ${observeMode ? "bg-amber-500" : "bg-gray-600"}`}
+                >
+                  <span
+                    className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${observeMode ? "translate-x-6" : ""}`}
+                  />
+                </button>
+              </div>
+              <p className="text-gray-400 text-sm">
+                開啟後 <strong className="text-white">AI 暫停自動回覆</strong>，客戶訊息只會記錄下來，並主動通知員工用「管理助手」代回。
+                適合剛上線先觀察一兩天客戶都問什麼、再回頭調整 AI 的設定。
+              </p>
+              {observeMode && (
+                <p className="text-amber-400 text-sm mt-3 bg-amber-900/30 border border-amber-800 rounded-lg px-3 py-2">
+                  ⚠️ 目前 AI 不會自動回覆客戶，記得由員工在 LINE 管理助手代回。
+                </p>
+              )}
             </div>
 
             {/* 📸 Instagram 串接 */}

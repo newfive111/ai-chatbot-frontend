@@ -212,11 +212,13 @@ export default function BotDetailPage() {
   // ── 客戶名單（submissions）──
   type Submission = {
     id: string; session_id?: string; display_name?: string;
-    data?: Record<string, string>; card_text?: string; created_at: string;
+    data?: Record<string, string>; card_text?: string; handled?: boolean; created_at: string;
   };
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [subSearch, setSubSearch] = useState("");
+  const [subFilter, setSubFilter] = useState<"all" | "pending" | "handled">("all");
 
   // LINE 串接
   const [lineSecret, setLineSecret] = useState("");
@@ -1067,6 +1069,62 @@ export default function BotDetailPage() {
     }
   };
 
+  const toggleHandled = async (s: Submission) => {
+    const next = !s.handled;
+    setSubmissions((prev) => prev.map((x) => (x.id === s.id ? { ...x, handled: next } : x)));
+    try {
+      await axios.patch(`${API}/bots/${id}/submissions/${s.id}`, { handled: next }, { headers });
+    } catch (err: any) {
+      setSubmissions((prev) => prev.map((x) => (x.id === s.id ? { ...x, handled: !next } : x)));
+      setMessage(`❌ ${err?.response?.data?.detail || "更新失敗"}`);
+      setTimeout(() => setMessage(""), 3000);
+    }
+  };
+
+  const exportCsv = () => {
+    const rows = filteredSubmissions;
+    if (rows.length === 0) {
+      setMessage("目前沒有可匯出的資料");
+      setTimeout(() => setMessage(""), 3000);
+      return;
+    }
+    // 蒐集所有出現過的欄位當標題
+    const keys: string[] = [];
+    rows.forEach((r) => Object.keys(r.data || {}).forEach((k) => { if (!keys.includes(k)) keys.push(k); }));
+    const header = ["建立時間", "LINE名稱", ...keys, "已處理"];
+    const esc = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = [header.map(esc).join(",")];
+    rows.forEach((r) => {
+      const row = [
+        new Date(r.created_at).toLocaleString("zh-TW"),
+        r.display_name || "",
+        ...keys.map((k) => (r.data || {})[k] || ""),
+        r.handled ? "是" : "否",
+      ];
+      lines.push(row.map(esc).join(","));
+    });
+    const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `客戶名單_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // 搜尋 + 狀態過濾
+  const filteredSubmissions = submissions.filter((s) => {
+    if (subFilter === "pending" && s.handled) return false;
+    if (subFilter === "handled" && !s.handled) return false;
+    if (subSearch.trim()) {
+      const q = subSearch.trim().toLowerCase();
+      const hay = [s.display_name || "", s.card_text || "", ...Object.values(s.data || {})]
+        .join(" ").toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
   useEffect(() => {
     if (tab === "submissions") fetchSubmissions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1455,13 +1513,44 @@ export default function BotDetailPage() {
                   客戶資料收集完成後自動整理成資料卡，點「複製」即可貼到你的業務表。格式可在「⚙️ 設定 → 客戶名單資料卡格式」調整。
                 </p>
               </div>
-              <button
-                onClick={fetchSubmissions}
-                className="text-sm bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg transition shrink-0"
-              >
-                ↻ 重新整理
-              </button>
+              <div className="flex gap-2 shrink-0">
+                <button
+                  onClick={exportCsv}
+                  className="text-sm bg-green-700 hover:bg-green-600 px-4 py-2 rounded-lg transition"
+                >
+                  ⬇ 匯出 CSV
+                </button>
+                <button
+                  onClick={fetchSubmissions}
+                  className="text-sm bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg transition"
+                >
+                  ↻ 重新整理
+                </button>
+              </div>
             </div>
+
+            {/* 搜尋 + 狀態過濾 */}
+            {submissions.length > 0 && (
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+                <input
+                  value={subSearch}
+                  onChange={(e) => setSubSearch(e.target.value)}
+                  placeholder="🔍 搜尋姓名、電話、任何欄位…"
+                  className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
+                />
+                <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-lg p-1 shrink-0">
+                  {([["all", "全部"], ["pending", "待處理"], ["handled", "已處理"]] as const).map(([v, label]) => (
+                    <button
+                      key={v}
+                      onClick={() => setSubFilter(v)}
+                      className={`px-3 py-1.5 rounded-md text-sm transition ${subFilter === v ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white"}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {submissionsLoading && submissions.length === 0 ? (
               <p className="text-gray-500 text-center py-12">載入中…</p>
@@ -1471,12 +1560,20 @@ export default function BotDetailPage() {
                 <p>目前還沒有收集完成的客戶資料</p>
                 <p className="text-xs mt-1">當客戶在 LINE 上完成資料填寫，就會出現在這裡</p>
               </div>
+            ) : filteredSubmissions.length === 0 ? (
+              <div className="bg-gray-900 rounded-xl p-12 text-center text-gray-500">
+                <p className="text-4xl mb-3">🔍</p>
+                <p>沒有符合條件的資料</p>
+              </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
-                {submissions.map((s) => (
-                  <div key={s.id} className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden flex flex-col">
+                {filteredSubmissions.map((s) => (
+                  <div key={s.id} className={`bg-gray-900 rounded-xl border overflow-hidden flex flex-col ${s.handled ? "border-green-800/60" : "border-gray-800"}`}>
                     <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-800 bg-gray-800/40">
-                      <span className="font-medium text-sm truncate">{s.display_name || "未具名"}</span>
+                      <span className="font-medium text-sm truncate flex items-center gap-2">
+                        {s.handled && <span className="text-green-400 text-xs">✅</span>}
+                        {s.display_name || "未具名"}
+                      </span>
                       <span className="text-xs text-gray-500 shrink-0 ml-2">
                         {new Date(s.created_at).toLocaleString("zh-TW", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
                       </span>
@@ -1488,6 +1585,12 @@ export default function BotDetailPage() {
                         className={`flex-1 py-2 rounded-lg text-sm font-semibold transition ${copiedId === s.id ? "bg-green-600" : "bg-blue-600 hover:bg-blue-700"}`}
                       >
                         {copiedId === s.id ? "✅ 已複製" : "📋 複製"}
+                      </button>
+                      <button
+                        onClick={() => toggleHandled(s)}
+                        className={`px-4 py-2 rounded-lg text-sm transition ${s.handled ? "bg-green-900/60 text-green-300 hover:bg-gray-800" : "bg-gray-800 text-gray-400 hover:bg-green-900/60 hover:text-green-300"}`}
+                      >
+                        {s.handled ? "↩ 未處理" : "✓ 標記已處理"}
                       </button>
                       <button
                         onClick={() => deleteSubmission(s)}

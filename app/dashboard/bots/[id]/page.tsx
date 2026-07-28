@@ -14,6 +14,7 @@ interface BotSettings {
   has_api_key: boolean;
   sheet_id?: string;
   collect_fields?: string[];
+  card_template?: string;
   welcome_message?: string;
   quick_replies?: { label: string }[];
   calendar_id?: string;
@@ -125,7 +126,7 @@ export default function BotDetailPage() {
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const assistantScrollRef = useRef<HTMLDivElement>(null);
 
-  const [tab, setTab] = useState<"knowledge" | "inbox" | "persona" | "chat" | "embed" | "settings" | "analytics">("knowledge");
+  const [tab, setTab] = useState<"knowledge" | "inbox" | "submissions" | "persona" | "chat" | "embed" | "settings" | "analytics">("knowledge");
 
   // AI 助手 floating widget
   const [assistantOpen, setAssistantOpen] = useState(false);
@@ -206,6 +207,16 @@ export default function BotDetailPage() {
   const [collectFields, setCollectFields] = useState<string[]>([]);
   const [newField, setNewField] = useState("");
   const [savingSheet, setSavingSheet] = useState(false);
+  const [cardTemplate, setCardTemplate] = useState("");
+
+  // ── 客戶名單（submissions）──
+  type Submission = {
+    id: string; session_id?: string; display_name?: string;
+    data?: Record<string, string>; card_text?: string; created_at: string;
+  };
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [submissionsLoading, setSubmissionsLoading] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // LINE 串接
   const [lineSecret, setLineSecret] = useState("");
@@ -314,6 +325,7 @@ export default function BotDetailPage() {
       setBotName(data.name || "");
       setSheetId(data.sheet_id || "");
       setCollectFields(data.collect_fields || []);
+      setCardTemplate(data.card_template || "");
       setSystemPrompt(data.system_prompt || "");
       const pf = data.persona_form;
       if (pf && typeof pf === "object") {
@@ -1009,6 +1021,7 @@ export default function BotDetailPage() {
       await axios.patch(`${API}/bots/${id}`, {
         sheet_id: sheetId,
         collect_fields: collectFields,
+        card_template: cardTemplate,
       }, { headers });
       setMessage("✅ Google Sheet 設定已儲存");
     } catch (err: any) {
@@ -1018,6 +1031,46 @@ export default function BotDetailPage() {
       setTimeout(() => setMessage(""), 3000);
     }
   };
+
+  // ── 客戶名單（submissions）──
+  const fetchSubmissions = async () => {
+    setSubmissionsLoading(true);
+    try {
+      const { data } = await axios.get(`${API}/bots/${id}/submissions`, { headers });
+      setSubmissions(data.submissions || []);
+    } catch {
+      setSubmissions([]);
+    } finally {
+      setSubmissionsLoading(false);
+    }
+  };
+
+  const copyCard = async (s: Submission) => {
+    try {
+      await navigator.clipboard.writeText(s.card_text || "");
+      setCopiedId(s.id);
+      setTimeout(() => setCopiedId((c) => (c === s.id ? null : c)), 1500);
+    } catch {
+      setMessage("❌ 複製失敗，請手動選取");
+      setTimeout(() => setMessage(""), 3000);
+    }
+  };
+
+  const deleteSubmission = async (s: Submission) => {
+    if (!confirm(`確定刪除「${s.display_name || "這筆"}」的資料？`)) return;
+    try {
+      await axios.delete(`${API}/bots/${id}/submissions/${s.id}`, { headers });
+      setSubmissions((prev) => prev.filter((x) => x.id !== s.id));
+    } catch (err: any) {
+      setMessage(`❌ ${err?.response?.data?.detail || "刪除失敗"}`);
+      setTimeout(() => setMessage(""), 3000);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === "submissions") fetchSubmissions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
   // ── 儲存 Instagram ──
   const saveInstagram = async () => {
@@ -1146,7 +1199,7 @@ export default function BotDetailPage() {
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6 border-b border-gray-800 overflow-x-auto">
-          {(["knowledge", "inbox", "persona", "chat", "embed", "settings", "analytics"] as const).map((t) => (
+          {(["knowledge", "inbox", "submissions", "persona", "chat", "embed", "settings", "analytics"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -1157,7 +1210,7 @@ export default function BotDetailPage() {
                   : "border-transparent text-gray-500 hover:text-white"
               }`}
             >
-              {{ knowledge: "📚 知識庫", inbox: "📥 客服對話", persona: "🤖 角色", chat: "💬 測試對話", embed: "🔗 嵌入代碼", settings: "⚙️ 設定", analytics: "📊 數據" }[t]}
+              {{ knowledge: "📚 知識庫", inbox: "📥 客服對話", submissions: "📋 客戶名單", persona: "🤖 角色", chat: "💬 測試對話", embed: "🔗 嵌入代碼", settings: "⚙️ 設定", analytics: "📊 數據" }[t]}
             </button>
           ))}
         </div>
@@ -1388,6 +1441,65 @@ export default function BotDetailPage() {
                 })()}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ── 客戶名單 Tab ── */}
+        {tab === "submissions" && (
+          <div className="flex flex-col gap-4">
+            {message && <div className="bg-green-900 text-green-300 px-4 py-3 rounded-lg text-sm">{message}</div>}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold">📋 客戶名單</h2>
+                <p className="text-gray-400 text-sm mt-0.5">
+                  客戶資料收集完成後自動整理成資料卡，點「複製」即可貼到你的業務表。格式可在「⚙️ 設定 → 客戶名單資料卡格式」調整。
+                </p>
+              </div>
+              <button
+                onClick={fetchSubmissions}
+                className="text-sm bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg transition shrink-0"
+              >
+                ↻ 重新整理
+              </button>
+            </div>
+
+            {submissionsLoading && submissions.length === 0 ? (
+              <p className="text-gray-500 text-center py-12">載入中…</p>
+            ) : submissions.length === 0 ? (
+              <div className="bg-gray-900 rounded-xl p-12 text-center text-gray-500">
+                <p className="text-4xl mb-3">📭</p>
+                <p>目前還沒有收集完成的客戶資料</p>
+                <p className="text-xs mt-1">當客戶在 LINE 上完成資料填寫，就會出現在這裡</p>
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {submissions.map((s) => (
+                  <div key={s.id} className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden flex flex-col">
+                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-800 bg-gray-800/40">
+                      <span className="font-medium text-sm truncate">{s.display_name || "未具名"}</span>
+                      <span className="text-xs text-gray-500 shrink-0 ml-2">
+                        {new Date(s.created_at).toLocaleString("zh-TW", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                    <pre className="px-4 py-3 text-sm text-gray-200 whitespace-pre-wrap break-words font-sans flex-1 leading-relaxed">{s.card_text || "（無內容）"}</pre>
+                    <div className="flex gap-2 px-4 py-3 border-t border-gray-800">
+                      <button
+                        onClick={() => copyCard(s)}
+                        className={`flex-1 py-2 rounded-lg text-sm font-semibold transition ${copiedId === s.id ? "bg-green-600" : "bg-blue-600 hover:bg-blue-700"}`}
+                      >
+                        {copiedId === s.id ? "✅ 已複製" : "📋 複製"}
+                      </button>
+                      <button
+                        onClick={() => deleteSubmission(s)}
+                        className="px-4 py-2 rounded-lg text-sm bg-gray-800 hover:bg-red-900/60 text-gray-400 hover:text-red-300 transition"
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -1928,6 +2040,29 @@ export default function BotDetailPage() {
                     + 新增
                   </button>
                 </div>
+              </div>
+
+              <div className="mb-4 border-t border-gray-800 pt-4">
+                <label className="text-sm text-gray-300 font-medium mb-1 block">📋 客戶名單資料卡格式</label>
+                <p className="text-gray-500 text-xs mb-2">
+                  客戶資料收集完後，會照這個格式排版成一張可複製的資料卡，顯示在「📋 客戶名單」。
+                  用 <code className="text-blue-300">{"{欄位名}"}</code> 當佔位符，收集到的值會自動填進去。留空則每個欄位各一行。
+                </p>
+                {collectFields.length > 0 && (
+                  <button
+                    onClick={() => setCardTemplate(collectFields.map((f) => `${f}：{${f}}`).join("\n"))}
+                    className="text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded-lg mb-2 transition"
+                  >
+                    ✨ 依收集欄位自動產生範本
+                  </button>
+                )}
+                <textarea
+                  value={cardTemplate}
+                  onChange={(e) => setCardTemplate(e.target.value)}
+                  placeholder={"姓名：{姓名}\n電話：{電話}\n需求金額：{需求金額}"}
+                  rows={8}
+                  className="w-full bg-gray-800 px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono leading-relaxed resize-y"
+                />
               </div>
 
               <button

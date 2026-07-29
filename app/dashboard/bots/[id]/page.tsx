@@ -1390,8 +1390,8 @@ export default function BotDetailPage() {
           <div className="flex flex-col gap-6">
             {message && <div className="bg-green-900 text-green-300 px-4 py-3 rounded-lg">{message}</div>}
 
-            <div className="bg-gray-900 rounded-xl p-6">
-              <h2 className="font-semibold mb-4">上傳 PDF / TXT 文件</h2>
+            <div className={CARD}>
+              <h2 className={`${CARD_TITLE} mb-4`}>上傳 PDF / TXT 文件</h2>
               <input
                 type="file"
                 accept=".pdf,.txt"
@@ -1412,8 +1412,8 @@ export default function BotDetailPage() {
               />
             </div>
 
-            <div className="bg-gray-900 rounded-xl p-6">
-              <h2 className="font-semibold mb-4">手動輸入 FAQ</h2>
+            <div className={CARD}>
+              <h2 className={`${CARD_TITLE} mb-4`}>手動輸入 FAQ</h2>
               <form onSubmit={submitFAQ} className="flex flex-col gap-3">
                 <textarea
                   value={faqText}
@@ -1425,16 +1425,16 @@ export default function BotDetailPage() {
                 <button
                   type="submit"
                   disabled={uploading || !faqText.trim()}
-                  className="bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition disabled:opacity-50"
+                  className={`${BTN_PRIMARY} py-3`}
                 >
                   {uploading ? "處理中..." : "加入知識庫"}
                 </button>
               </form>
             </div>
 
-            <div className="bg-gray-900 rounded-xl p-6">
+            <div className={CARD}>
               <div className="flex justify-between items-center mb-4">
-                <h2 className="font-semibold">
+                <h2 className={CARD_TITLE}>
                   📋 知識庫紀錄
                   <span className="ml-2 text-sm text-gray-400 font-normal">({chunks.length} 筆)</span>
                 </h2>
@@ -1620,7 +1620,7 @@ export default function BotDetailPage() {
             {message && <div className="bg-green-900 text-green-300 px-4 py-3 rounded-lg text-sm">{message}</div>}
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="font-semibold">📋 客戶名單</h2>
+                <h2 className={CARD_TITLE}>📋 客戶名單</h2>
                 <p className="text-gray-400 text-sm mt-0.5">
                   客戶資料收集完成後自動整理成資料卡，點「複製」即可貼到你的業務表。格式可在「⚙️ 設定 → 客戶名單資料卡格式」調整。
                 </p>
@@ -1736,9 +1736,9 @@ export default function BotDetailPage() {
             )}
 
             {/* 角色 & 說話風格 */}
-            <div className="bg-gray-900 rounded-2xl p-6">
+            <div className={CARD}>
               <div className="flex justify-between items-start mb-1">
-                <h2 className="text-lg font-semibold">🤖 角色 & 說話風格</h2>
+                <h2 className={CARD_TITLE}>🤖 角色 & 說話風格</h2>
                 <div className="flex gap-1 bg-gray-800 rounded-lg p-1 text-xs">
                   <button
                     onClick={() => setPersonaMode("simple")}
@@ -1935,7 +1935,7 @@ export default function BotDetailPage() {
                 <button
                   onClick={savePrompt}
                   disabled={savingPrompt}
-                  className="flex-1 bg-purple-600 hover:bg-purple-700 py-3 rounded-xl font-semibold transition disabled:opacity-50"
+                  className={`${BTN_PRIMARY} flex-1 py-3`}
                 >
                   {savingPrompt ? "儲存中..." : "💾 儲存角色設定"}
                 </button>
@@ -1950,8 +1950,8 @@ export default function BotDetailPage() {
             </div>
 
             {/* 開場引導 */}
-            <div className="bg-gray-900 rounded-2xl p-6">
-              <h2 className="text-lg font-semibold mb-1">🎯 開場引導</h2>
+            <div className={CARD}>
+              <h2 className={`${CARD_TITLE} mb-1`}>🎯 開場引導</h2>
               <p className="text-gray-400 text-sm mb-5">
                 用戶開啟對話時，Bot 會先發送歡迎訊息並顯示快速選項按鈕。
               </p>
@@ -2030,7 +2030,7 @@ export default function BotDetailPage() {
               <button
                 onClick={saveGuide}
                 disabled={savingGuide}
-                className="w-full bg-teal-600 hover:bg-teal-700 py-3 rounded-xl font-semibold transition disabled:opacity-50"
+                className={`${BTN_PRIMARY} w-full py-3`}
               >
                 {savingGuide ? "儲存中..." : "💾 儲存引導設定"}
               </button>
@@ -2042,7 +2042,7 @@ export default function BotDetailPage() {
         {tab === "chat" && (
           <div className="bg-gray-900 rounded-xl flex flex-col" style={{ height: "580px" }}>
             <div className="flex justify-between items-center px-5 py-4 border-b border-gray-800">
-              <h2 className="font-semibold">💬 測試對話</h2>
+              <h2 className={CARD_TITLE}>💬 測試對話</h2>
               <button
                 onClick={resetChat}
                 className="text-xs text-gray-400 hover:text-white transition px-3 py-1 bg-gray-800 rounded-lg"
@@ -2629,8 +2629,8 @@ export default function BotDetailPage() {
             {message && <div className="bg-green-900 text-green-300 px-4 py-3 rounded-lg">{message}</div>}
 
             {/* 網站嵌入 */}
-            <div className="bg-gray-900 rounded-xl p-6">
-              <h2 className="font-semibold mb-2">🌐 網站嵌入代碼</h2>
+            <div className={CARD}>
+              <h2 className={`${CARD_TITLE} mb-2`}>🌐 網站嵌入代碼</h2>
               <p className="text-gray-400 text-sm mb-4">貼到你網站的 &lt;/body&gt; 前</p>
               <pre className="bg-gray-800 rounded-lg p-4 text-sm text-green-400 overflow-x-auto whitespace-pre-wrap">
                 {embedCode}
@@ -2638,9 +2638,9 @@ export default function BotDetailPage() {
             </div>
 
             {/* LINE Bot 串接 */}
-            <div className="bg-gray-900 rounded-xl p-6">
+            <div className={CARD}>
               <div className="flex items-center justify-between mb-1">
-                <h2 className="font-semibold">📱 LINE Bot 串接</h2>
+                <h2 className={CARD_TITLE}>📱 LINE Bot 串接</h2>
                 {lineConfigured && (
                   <span className="text-green-400 text-xs bg-green-900/40 border border-green-800 px-2 py-0.5 rounded-full">✅ 已設定</span>
                 )}
@@ -2718,7 +2718,7 @@ export default function BotDetailPage() {
                 <button
                   onClick={saveLineConfig}
                   disabled={savingLine || lineVerifying || (!lineSecret.trim() && !lineToken.trim())}
-                  className="flex-1 bg-green-600 hover:bg-green-700 py-3 rounded-lg font-semibold transition disabled:opacity-50"
+                  className={`${BTN_PRIMARY} flex-1 py-3`}
                 >
                   {savingLine ? "儲存中..." : "💾 儲存並自動設定"}
                 </button>
@@ -2797,9 +2797,9 @@ export default function BotDetailPage() {
             </div>
 
             {/* 📸 Instagram 串接 */}
-            <div className="bg-gray-900 rounded-xl p-6">
+            <div className={CARD}>
               <div className="flex items-center justify-between mb-1">
-                <h2 className="font-semibold">📸 Instagram 自動回覆</h2>
+                <h2 className={CARD_TITLE}>📸 Instagram 自動回覆</h2>
                 {instagramConfigured && (
                   <span className="text-pink-400 text-xs bg-pink-900/40 border border-pink-800 px-2 py-0.5 rounded-full">✅ 已設定</span>
                 )}
@@ -2844,7 +2844,7 @@ export default function BotDetailPage() {
               <button
                 onClick={saveInstagram}
                 disabled={savingInstagram || !instagramPageToken.trim()}
-                className="w-full bg-pink-600 hover:bg-pink-700 py-3 rounded-lg font-semibold transition disabled:opacity-50 mb-5"
+                className={`${BTN_PRIMARY} w-full py-3 mb-5`}
               >
                 {savingInstagram ? "儲存中..." : "💾 儲存 Instagram 設定"}
               </button>
@@ -2933,9 +2933,9 @@ export default function BotDetailPage() {
             )}
 
             {/* AI 分析區 */}
-            <div className="bg-gray-900 rounded-xl p-6">
+            <div className={CARD}>
               <div className="flex items-center justify-between mb-1">
-                <h2 className="font-semibold">🤖 AI 對話分析</h2>
+                <h2 className={CARD_TITLE}>🤖 AI 對話分析</h2>
               </div>
               <p className="text-gray-500 text-xs mb-4">依對話 session 分組，分析完成率、客戶疑慮、Bot 問題與改善建議</p>
 
@@ -3004,8 +3004,8 @@ export default function BotDetailPage() {
             </div>
 
             {/* 語氣風格分析 */}
-            <div className="bg-gray-900 rounded-xl p-6">
-              <h2 className="font-semibold mb-1">🎨 語氣風格分析</h2>
+            <div className={CARD}>
+              <h2 className={`${CARD_TITLE} mb-1`}>🎨 語氣風格分析</h2>
               <p className="text-gray-500 text-xs mb-4">讀客戶訊息 + 員工真人代回 + Bot 回覆，分析語氣口吻與遣詞用字，產出一份話術風格指南（沿用上方的時間範圍）</p>
 
               <button
@@ -3053,7 +3053,7 @@ export default function BotDetailPage() {
         <div className="bg-gray-900 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl border border-gray-800">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
             <div>
-              <h2 className="font-semibold text-white">📋 對話紀錄</h2>
+              <h2 className={CARD_TITLE}>📋 對話紀錄</h2>
               {logsData && (
                 <p className="text-xs text-gray-500 mt-0.5">
                   {analysisDays > 0 ? `近 ${analysisDays} 天` : "全部"}・{logsData.total_sessions} 個 session・{logsData.total_messages} 則訊息
@@ -3144,7 +3144,7 @@ export default function BotDetailPage() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-4">
           <div className="bg-gray-900 rounded-2xl w-full max-w-lg max-h-[80vh] flex flex-col shadow-2xl border border-gray-800">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
-              <h2 className="font-semibold text-white">🕐 設定歷史紀錄</h2>
+              <h2 className={CARD_TITLE}>🕐 設定歷史紀錄</h2>
               <button onClick={() => setHistoryOpen(false)} className="text-gray-400 hover:text-white text-xl">✕</button>
             </div>
             <div className="overflow-y-auto flex-1 px-6 py-4 flex flex-col gap-3">

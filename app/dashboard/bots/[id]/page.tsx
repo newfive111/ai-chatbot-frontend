@@ -119,6 +119,77 @@ function buildPersonaPrompt(form: PersonaForm, botName: string): string {
   return lines.join("\n\n");
 }
 
+// 行業範本：選一個就把角色、歡迎語、收集欄位、資料卡格式一次填好，租客可再改
+interface IndustryTemplate {
+  id: string;
+  label: string;
+  persona: PersonaForm;
+  welcome_message: string;
+  collect_fields: string[];
+  card_template: string;
+  suggests_calendar: boolean;
+}
+
+const INDUSTRY_TEMPLATES: IndustryTemplate[] = [
+  {
+    id: "nail",
+    label: "💅 美甲 / 美睫",
+    persona: {
+      business: "專營美甲、美睫的預約制沙龍",
+      role: "booking",
+      tones: ["親切", "熱情活潑"],
+      highlights:
+        "採預約制，提供光療美甲、卸甲、手足保養、美睫服務。可先詢問款式與大概價位，實際依設計複雜度而定，歡迎傳參考圖討論。",
+      taboos:
+        "不隨意報出精確價格（需看款式）；不承諾當天一定有空位；不評論客人原本指甲狀況造成壓力。",
+    },
+    welcome_message:
+      "哈囉～歡迎詢問美甲/美睫預約 💅 想預約可以直接跟我說想要的日期，或先傳款式參考圖給我看看喔！",
+    collect_fields: ["姓名", "電話", "想預約的日期時間", "想做的服務款式"],
+    card_template:
+      "【新預約｜美甲】\n姓名：{姓名}\n電話：{電話}\n時間：{想預約的日期時間}\n款式：{想做的服務款式}",
+    suggests_calendar: true,
+  },
+  {
+    id: "hair",
+    label: "✂️ 理髮廳 / 美髮",
+    persona: {
+      business: "提供剪髮、染燙、護髮的美髮沙龍",
+      role: "booking",
+      tones: ["親切", "專業"],
+      highlights:
+        "提供剪髮、染髮、燙髮、護髮等服務，採預約制。染燙需預留較長時間，建議提前預約，可先告知想做的項目與指定設計師。",
+      taboos:
+        "不保證染燙成色（依髮質而定）；不批評客人現在的髮型；染燙價格需現場評估，不亂報死價。",
+    },
+    welcome_message:
+      "您好～歡迎預約剪髮/染燙 ✂️ 請問您想預約哪一天？想做的是剪髮還是染燙呢？",
+    collect_fields: ["姓名", "電話", "想預約的日期時間", "想做的項目"],
+    card_template:
+      "【新預約｜美髮】\n姓名：{姓名}\n電話：{電話}\n時間：{想預約的日期時間}\n項目：{想做的項目}",
+    suggests_calendar: true,
+  },
+  {
+    id: "insurance",
+    label: "🛡️ 保險業務",
+    persona: {
+      business: "協助客戶初步了解保險需求，並安排專人後續說明",
+      role: "sales",
+      tones: ["專業", "親切"],
+      highlights:
+        "我可以先了解您想規劃的方向（例如醫療、意外、儲蓄、退休等），並簡單說明。實際保障內容與規劃會由專員與您聯繫、依您的狀況量身建議。",
+      taboos:
+        "絕不承諾或試算具體保額、保費、理賠金額或投資報酬；不施壓逼客人立即投保；不比較或貶低其他保險公司；細節一律交由專員說明。",
+    },
+    welcome_message:
+      "您好！感謝您的詢問 😊 方便留下您的稱呼和想了解的方向嗎？我先幫您記錄，再請專員與您聯繫説明，不會有任何壓力。",
+    collect_fields: ["姓名", "電話", "想了解的險種 / 需求", "方便聯絡的時間"],
+    card_template:
+      "【新名單｜保險諮詢】\n姓名：{姓名}\n電話：{電話}\n需求：{想了解的險種 / 需求}\n方便聯絡時間：{方便聯絡的時間}",
+    suggests_calendar: false,
+  },
+];
+
 export default function BotDetailPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -608,6 +679,41 @@ export default function BotDetailPage() {
     } finally {
       setSavingPrompt(false);
       setTimeout(() => setMessage(""), 3000);
+    }
+  };
+
+  // 套用行業範本：一次填好角色、歡迎語、收集欄位、資料卡格式並寫回後端
+  const applyTemplate = async (tpl: IndustryTemplate) => {
+    if (!id) return;
+    if (!confirm(`套用「${tpl.label}」範本？\n會覆蓋目前的角色設定、歡迎語、收集欄位與資料卡格式（套用後仍可自行修改）。`)) return;
+    const form: PersonaForm = { ...tpl.persona };
+    setPBusiness(form.business);
+    setPRole(form.role);
+    setPTones(form.tones);
+    setPHighlights(form.highlights);
+    setPTaboos(form.taboos);
+    setPersonaMode("simple");
+    setWelcomeMessage(tpl.welcome_message);
+    setCollectFields(tpl.collect_fields);
+    setCardTemplate(tpl.card_template);
+    try {
+      await axios.patch(`${API}/bots/${id}`, {
+        system_prompt: buildPersonaPrompt(form, botName),
+        persona_form: form,
+        welcome_message: tpl.welcome_message,
+        collect_fields: tpl.collect_fields,
+        card_template: tpl.card_template,
+      }, { headers });
+      setIsDirty(false);
+      setMessage(
+        tpl.suggests_calendar
+          ? "✅ 已套用範本！這個行業建議到「⚙️ 設定 → 📅 預約系統」綁定行事曆，Bot 就能自動預約"
+          : "✅ 已套用範本！可再依你的需求微調"
+      );
+    } catch (err: any) {
+      setMessage(`❌ ${err?.response?.data?.detail || "套用失敗，請稍後再試"}`);
+    } finally {
+      setTimeout(() => setMessage(""), 5000);
     }
   };
 
@@ -1646,6 +1752,23 @@ export default function BotDetailPage() {
 
               {personaMode === "simple" ? (
                 <div className="space-y-5">
+                  {/* 行業範本：一鍵套用 */}
+                  <div className="bg-gray-800/40 border border-gray-700 rounded-xl p-4">
+                    <label className="text-sm font-medium text-gray-200 block mb-1">📦 套用行業範本</label>
+                    <p className="text-xs text-gray-500 mb-3">選一個最接近你行業的範本，角色、歡迎語、收集欄位、資料卡格式會一次填好，之後都能再改。</p>
+                    <div className="flex flex-wrap gap-2">
+                      {INDUSTRY_TEMPLATES.map((tpl) => (
+                        <button
+                          key={tpl.id}
+                          onClick={() => applyTemplate(tpl)}
+                          className="px-4 py-2 rounded-lg text-sm border border-gray-600 bg-gray-800 hover:border-blue-500 hover:bg-blue-900/30 transition"
+                        >
+                          {tpl.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* 方案 2：一句話 → AI 幫你填 */}
                   <div className="bg-gradient-to-r from-purple-900/40 to-pink-900/30 border border-purple-800/50 rounded-xl p-4">
                     <label className="text-sm font-medium text-purple-200 block mb-2">✨ 懶得填？用一句話描述你的生意，讓 AI 幫你填</label>

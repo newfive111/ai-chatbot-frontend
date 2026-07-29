@@ -1363,7 +1363,7 @@ export default function BotDetailPage() {
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6 border-b border-gray-800 overflow-x-auto">
-          {(["knowledge", "inbox", "submissions", "persona", "chat", "embed", "settings", "analytics"] as const).map((t) => (
+          {(["knowledge", "persona", "settings", "embed", "chat", "inbox", "submissions", "analytics"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -1374,7 +1374,7 @@ export default function BotDetailPage() {
                   : "border-transparent text-gray-500 hover:text-white"
               }`}
             >
-              {{ knowledge: "📚 知識庫", inbox: "📥 客服對話", submissions: "📋 客戶名單", persona: "🤖 角色", chat: "💬 測試對話", embed: "🔗 嵌入代碼", settings: "⚙️ 設定", analytics: "📊 數據" }[t]}
+              {{ knowledge: "📚 知識庫", inbox: "📥 客服對話", submissions: "📋 客戶名單", persona: "🤖 角色", chat: "💬 測試對話", embed: "🔌 渠道串接", settings: "⚙️ 運作設定", analytics: "📊 數據" }[t]}
             </button>
           ))}
         </div>
@@ -2115,6 +2115,13 @@ export default function BotDetailPage() {
           <div className="flex flex-col gap-6">
             {message && <div className="bg-green-900 text-green-300 px-4 py-3 rounded-lg">{message}</div>}
 
+            {/* ── 分組：必要設定 ── */}
+            <div className="flex items-center gap-3 pt-1">
+              <h3 className="text-sm font-bold text-gray-300 tracking-wide">必要設定</h3>
+              <span className="text-xs text-gray-600">Bot 運作的基本項目</span>
+              <div className="flex-1 h-px bg-gray-800" />
+            </div>
+
             {/* 🔑 Gemini API Key */}
             <div className="bg-gray-900 rounded-xl p-6">
               <div className="flex items-center justify-between mb-1">
@@ -2298,6 +2305,13 @@ export default function BotDetailPage() {
               >
                 {savingSheet ? "儲存中..." : "💾 儲存 Sheet 設定"}
               </button>
+            </div>
+
+            {/* ── 分組：進階設定 ── */}
+            <div className="flex items-center gap-3 pt-3">
+              <h3 className="text-sm font-bold text-gray-300 tracking-wide">進階設定</h3>
+              <span className="text-xs text-gray-600">依需求選用，沒設定也能運作</span>
+              <div className="flex-1 h-px bg-gray-800" />
             </div>
 
             {/* 📅 預約系統 */}
@@ -2548,10 +2562,62 @@ export default function BotDetailPage() {
               </button>
             </div>
 
+            {/* ⏱ 防抖設定 */}
+            <div className="bg-gray-900 rounded-xl p-6">
+              <h2 className="font-semibold mb-1">⏱ LINE 防抖時間</h2>
+              <p className="text-gray-400 text-sm mb-5">
+                用戶連續傳訊息時，等待幾秒後才合併回覆。設太短容易重複回應，設太長用戶等太久。建議 10-20 秒。
+              </p>
+              <div className="flex items-center gap-4 mb-4">
+                <input
+                  type="range"
+                  min={3}
+                  max={60}
+                  step={1}
+                  value={debounceSeconds}
+                  onChange={(e) => setDebounceSeconds(Number(e.target.value))}
+                  className="flex-1 accent-blue-500"
+                />
+                <span className="text-white font-bold text-lg w-16 text-right">{debounceSeconds} 秒</span>
+              </div>
+              <button
+                onClick={saveDebounce}
+                disabled={savingDebounce}
+                className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition disabled:opacity-50"
+              >
+                {savingDebounce ? "儲存中..." : "💾 儲存防抖設定"}
+              </button>
+            </div>
+
+            {/* 👀 觀察模式 */}
+            <div className="bg-gray-900 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="font-semibold">👀 觀察模式</h2>
+                <button
+                  onClick={() => toggleObserve(!observeMode)}
+                  disabled={savingObserve}
+                  className={`relative w-14 h-8 rounded-full transition disabled:opacity-50 ${observeMode ? "bg-amber-500" : "bg-gray-600"}`}
+                >
+                  <span
+                    className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${observeMode ? "translate-x-6" : ""}`}
+                  />
+                </button>
+              </div>
+              <p className="text-gray-400 text-sm">
+                開啟後 <strong className="text-white">AI 暫停自動回覆</strong>，客戶訊息只會記錄下來，並主動通知員工用「管理助手」代回。
+                適合剛上線先觀察一兩天客戶都問什麼、再回頭調整 AI 的設定。
+              </p>
+              {observeMode && (
+                <p className="text-amber-400 text-sm mt-3 bg-amber-900/30 border border-amber-800 rounded-lg px-3 py-2">
+                  ⚠️ 目前 AI 不會自動回覆客戶，記得由員工在 LINE 管理助手代回。
+                </p>
+              )}
+            </div>
+
           </div>
         )}
 
-        {/* ── 嵌入代碼 Tab ── */}
+        {/* ── 渠道串接 Tab ── */}
         {tab === "embed" && (
           <div className="flex flex-col gap-6">
             {message && <div className="bg-green-900 text-green-300 px-4 py-3 rounded-lg">{message}</div>}
@@ -2722,58 +2788,6 @@ export default function BotDetailPage() {
                   </button>
                 </div>
               </div>
-            </div>
-
-            {/* ⏱ 防抖設定 */}
-            <div className="bg-gray-900 rounded-xl p-6">
-              <h2 className="font-semibold mb-1">⏱ LINE 防抖時間</h2>
-              <p className="text-gray-400 text-sm mb-5">
-                用戶連續傳訊息時，等待幾秒後才合併回覆。設太短容易重複回應，設太長用戶等太久。建議 10-20 秒。
-              </p>
-              <div className="flex items-center gap-4 mb-4">
-                <input
-                  type="range"
-                  min={3}
-                  max={60}
-                  step={1}
-                  value={debounceSeconds}
-                  onChange={(e) => setDebounceSeconds(Number(e.target.value))}
-                  className="flex-1 accent-blue-500"
-                />
-                <span className="text-white font-bold text-lg w-16 text-right">{debounceSeconds} 秒</span>
-              </div>
-              <button
-                onClick={saveDebounce}
-                disabled={savingDebounce}
-                className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition disabled:opacity-50"
-              >
-                {savingDebounce ? "儲存中..." : "💾 儲存防抖設定"}
-              </button>
-            </div>
-
-            {/* 👀 觀察模式 */}
-            <div className="bg-gray-900 rounded-xl p-6">
-              <div className="flex items-center justify-between mb-1">
-                <h2 className="font-semibold">👀 觀察模式</h2>
-                <button
-                  onClick={() => toggleObserve(!observeMode)}
-                  disabled={savingObserve}
-                  className={`relative w-14 h-8 rounded-full transition disabled:opacity-50 ${observeMode ? "bg-amber-500" : "bg-gray-600"}`}
-                >
-                  <span
-                    className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-transform ${observeMode ? "translate-x-6" : ""}`}
-                  />
-                </button>
-              </div>
-              <p className="text-gray-400 text-sm">
-                開啟後 <strong className="text-white">AI 暫停自動回覆</strong>，客戶訊息只會記錄下來，並主動通知員工用「管理助手」代回。
-                適合剛上線先觀察一兩天客戶都問什麼、再回頭調整 AI 的設定。
-              </p>
-              {observeMode && (
-                <p className="text-amber-400 text-sm mt-3 bg-amber-900/30 border border-amber-800 rounded-lg px-3 py-2">
-                  ⚠️ 目前 AI 不會自動回覆客戶，記得由員工在 LINE 管理助手代回。
-                </p>
-              )}
             </div>
 
             {/* 📸 Instagram 串接 */}

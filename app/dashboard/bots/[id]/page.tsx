@@ -90,6 +90,12 @@ const PROMPT_PRESETS = [
 ];
 
 // 簡單模式：結構化角色填空
+// ── 視覺設計 token（方案 B：統一卡片、標題、按鈕樣式）──
+const CARD = "bg-gray-900 border border-gray-800 rounded-xl p-6";
+const CARD_TITLE = "text-base font-semibold text-white";
+const BTN_PRIMARY = "bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition font-semibold rounded-lg";
+const BTN_DANGER = "bg-red-600 hover:bg-red-700 disabled:opacity-50 transition font-semibold rounded-lg";
+
 const PERSONA_ROLES = [
   { key: "customer_service", label: "客服人員" },
   { key: "sales",            label: "業務專員" },
@@ -2123,9 +2129,9 @@ export default function BotDetailPage() {
             </div>
 
             {/* 🔑 Gemini API Key */}
-            <div className="bg-gray-900 rounded-xl p-6">
+            <div className={CARD}>
               <div className="flex items-center justify-between mb-1">
-                <h2 className="font-semibold">🔑 Gemini API Key</h2>
+                <h2 className={CARD_TITLE}>🔑 Gemini API Key</h2>
                 {botSettings?.has_api_key && (
                   <span className="text-green-400 text-xs bg-green-900/40 border border-green-800 px-2 py-0.5 rounded-full">✅ 已設定</span>
                 )}
@@ -2176,7 +2182,7 @@ export default function BotDetailPage() {
                 <button
                   disabled={savingKey || !apiKey.trim()}
                   onClick={saveApiKey}
-                  className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-semibold transition disabled:opacity-50"
+                  className={`${BTN_PRIMARY} px-6 py-3`}
                 >
                   {savingKey ? "儲存中..." : "儲存"}
                 </button>
@@ -2184,8 +2190,8 @@ export default function BotDetailPage() {
             </div>
 
             {/* 📊 Google Sheet */}
-            <div className="bg-gray-900 rounded-xl p-6">
-              <h2 className="font-semibold mb-1">📊 Google Sheet 資料收集</h2>
+            <div className={CARD}>
+              <h2 className={`${CARD_TITLE} mb-1`}>📊 Google Sheet 資料收集</h2>
               <p className="text-gray-400 text-sm mb-3">
                 Bot 會主動向用戶收集這些欄位，並自動存到你的 Google Sheet。
               </p>
@@ -2301,7 +2307,7 @@ export default function BotDetailPage() {
               <button
                 onClick={saveSheet}
                 disabled={savingSheet}
-                className="w-full bg-green-600 hover:bg-green-700 py-3 rounded-lg font-semibold transition disabled:opacity-50"
+                className={`${BTN_PRIMARY} w-full py-3`}
               >
                 {savingSheet ? "儲存中..." : "💾 儲存 Sheet 設定"}
               </button>
@@ -2315,9 +2321,9 @@ export default function BotDetailPage() {
             </div>
 
             {/* 📅 預約系統 */}
-            <div className="bg-gray-900 rounded-xl p-6">
+            <div className={CARD}>
               <div className="flex items-center justify-between mb-1">
-                <h2 className="font-semibold">📅 預約系統</h2>
+                <h2 className={CARD_TITLE}>📅 預約系統</h2>
                 {calendarId && (
                   <span className="text-green-400 text-xs bg-green-900/40 border border-green-800 px-2 py-0.5 rounded-full">✅ 已啟用</span>
                 )}
@@ -2430,15 +2436,15 @@ export default function BotDetailPage() {
               <button
                 onClick={saveCalendar}
                 disabled={savingCalendar}
-                className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition disabled:opacity-50"
+                className={`${BTN_PRIMARY} w-full py-3`}
               >
                 {savingCalendar ? "儲存中..." : "💾 儲存預約設定"}
               </button>
             </div>
 
             {/* 🌙 下班時間自動回應 */}
-            <div className="bg-gray-900 rounded-xl p-6">
-              <h2 className="font-semibold mb-1">🌙 下班時間自動回應</h2>
+            <div className={CARD}>
+              <h2 className={`${CARD_TITLE} mb-1`}>🌙 下班時間自動回應</h2>
               <p className="text-gray-400 text-sm mb-5">
                 非上班時間收到訊息，資料收集完成後 Bot 會附上這則通知。留空則不啟用。
               </p>
@@ -2485,16 +2491,16 @@ export default function BotDetailPage() {
               <button
                 onClick={saveOffHours}
                 disabled={savingOffHours}
-                className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition disabled:opacity-50"
+                className={`${BTN_PRIMARY} w-full py-3`}
               >
                 {savingOffHours ? "儲存中..." : "💾 儲存設定"}
               </button>
             </div>
 
             {/* ⚡ 關鍵字觸發 */}
-            <div className="bg-gray-900 rounded-xl p-6">
+            <div className={CARD}>
               <div className="flex items-center justify-between mb-1">
-                <h2 className="font-semibold">⚡ 關鍵字觸發</h2>
+                <h2 className={CARD_TITLE}>⚡ 關鍵字觸發</h2>
                 {keywordTriggers.length > 0 && (
                   <span className="text-yellow-400 text-xs bg-yellow-900/30 border border-yellow-800 px-2 py-0.5 rounded-full">{keywordTriggers.length} 筆</span>
                 )}
@@ -2556,15 +2562,15 @@ export default function BotDetailPage() {
               <button
                 onClick={saveKeywordTriggers}
                 disabled={savingKeywords}
-                className="w-full bg-yellow-600 hover:bg-yellow-700 py-3 rounded-lg font-semibold transition disabled:opacity-50"
+                className={`${BTN_PRIMARY} w-full py-3`}
               >
                 {savingKeywords ? "儲存中..." : "💾 儲存關鍵字設定"}
               </button>
             </div>
 
             {/* ⏱ 防抖設定 */}
-            <div className="bg-gray-900 rounded-xl p-6">
-              <h2 className="font-semibold mb-1">⏱ LINE 防抖時間</h2>
+            <div className={CARD}>
+              <h2 className={`${CARD_TITLE} mb-1`}>⏱ LINE 防抖時間</h2>
               <p className="text-gray-400 text-sm mb-5">
                 用戶連續傳訊息時，等待幾秒後才合併回覆。設太短容易重複回應，設太長用戶等太久。建議 10-20 秒。
               </p>
@@ -2583,16 +2589,16 @@ export default function BotDetailPage() {
               <button
                 onClick={saveDebounce}
                 disabled={savingDebounce}
-                className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition disabled:opacity-50"
+                className={`${BTN_PRIMARY} w-full py-3`}
               >
                 {savingDebounce ? "儲存中..." : "💾 儲存防抖設定"}
               </button>
             </div>
 
             {/* 👀 觀察模式 */}
-            <div className="bg-gray-900 rounded-xl p-6">
+            <div className={CARD}>
               <div className="flex items-center justify-between mb-1">
-                <h2 className="font-semibold">👀 觀察模式</h2>
+                <h2 className={CARD_TITLE}>👀 觀察模式</h2>
                 <button
                   onClick={() => toggleObserve(!observeMode)}
                   disabled={savingObserve}

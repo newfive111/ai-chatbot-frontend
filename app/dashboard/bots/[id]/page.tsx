@@ -2442,7 +2442,7 @@ export default function BotDetailPage() {
                 )}
               </div>
               <p className="text-gray-400 text-sm mb-5">
-                啟用後 Bot 可自動查詢空檔並在 Google Calendar 建立預約。
+                啟用後 Bot 可自動查詢空檔並在 Google 日曆建立預約。
               </p>
 
               {/* 設定步驟說明 */}
@@ -2451,13 +2451,14 @@ export default function BotDetailPage() {
                 <ol className="text-gray-400 flex flex-col gap-2">
                   <li className="flex items-start gap-2">
                     <span className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">1</span>
-                    開啟 <a href="https://calendar.google.com" target="_blank" className="text-blue-400 underline">Google Calendar</a>，建立一個專用行事曆（例如「預約系統」）
+                    <div>
+                      開啟 <a href="https://calendar.google.com" target="_blank" className="text-blue-400 underline">Google 日曆</a>，在左側「其他日曆」右邊點「<strong className="text-white">＋</strong>」→「<strong className="text-white">建立新日曆</strong>」，取名（例如「預約系統」）後按「建立日曆」
+                    </div>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">2</span>
                     <div>
-                      點該行事曆旁的 ⋮ → 「設定及共用」→「與特定使用者或群組共用」<br/>
-                      加入以下 Email，並設為<strong className="text-white">「更改事件」</strong>：
+                      回到左側「我的日曆」，把滑鼠移到剛建立的日曆上 → 點「<strong className="text-white">⋮</strong>」→「<strong className="text-white">設定和共用</strong>」。捲到「與特定使用者或群組共用」→「<strong className="text-white">新增使用者和群組</strong>」，貼上下面這個 Email，權限選<strong className="text-white">「變更活動」</strong>後按「傳送」：
                       <div className="mt-1.5 bg-gray-700 rounded px-3 py-1.5 font-mono text-xs text-green-400 flex items-center justify-between">
                         <span>bothelper-sheets@bothelper-489007.iam.gserviceaccount.com</span>
                         <button
@@ -2470,11 +2471,11 @@ export default function BotDetailPage() {
                   <li className="flex items-start gap-2">
                     <span className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">3</span>
                     <div>
-                      在「整合行事曆」區塊找到「行事曆 ID」，格式類似：
+                      在同一頁往下捲到「<strong className="text-white">整合日曆</strong>」，複製「<strong className="text-white">日曆 ID</strong>」，格式類似：
                       <div className="mt-1 bg-gray-700 rounded px-2 py-1 font-mono text-xs text-yellow-400">
                         abc123@group.calendar.google.com
                       </div>
-                      複製後貼到下方欄位
+                      貼到下方欄位
                     </div>
                   </li>
                 </ol>

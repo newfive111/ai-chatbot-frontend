@@ -2226,7 +2226,7 @@ export default function BotDetailPage() {
             <div className={CARD}>
               <h2 className={`${CARD_TITLE} mb-1`}>📊 Google Sheet 資料收集</h2>
               <p className="text-gray-400 text-sm mb-3">
-                Bot 會主動向用戶收集這些欄位，並自動存到你的 Google Sheet。
+                Bot 收集完客戶資料後，會自動存到你的 Google Sheet，並在後台整理成可複製的客戶名單。
               </p>
 
               <div className="bg-gray-800 rounded-lg p-4 mb-4 text-sm">
@@ -2270,83 +2270,103 @@ export default function BotDetailPage() {
                 />
               </div>
 
-              <div className="mb-4">
-                <label className="text-sm text-gray-400 mb-2 block">要收集的欄位</label>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {collectFields.map((field, i) => (
-                    <span key={i} className="flex items-center gap-1 bg-blue-900 text-blue-200 px-3 py-1 rounded-full text-sm">
-                      {field}
-                      <button
-                        onClick={() => setCollectFields((prev) => prev.filter((_, idx) => idx !== i))}
-                        className="text-blue-300 hover:text-white ml-1"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                  {collectFields.length === 0 && <p className="text-gray-500 text-sm">尚未設定欄位</p>}
+              {/* 要收集的欄位 — 只有「簡單模式」(未設定角色 / 對話 prompt) 才真正驅動收集 */}
+              {!systemPrompt.trim() && (
+                <div className="mb-4">
+                  <label className="text-sm text-gray-400 mb-1 block">要收集的欄位</label>
+                  <p className="text-gray-500 text-xs mb-2">
+                    簡單模式：Bot 會照這個清單逐一詢問客戶。一旦你在「角色 / 對話設定」填了 prompt，收集內容改由對話設定決定，這一區會自動隱藏。
+                  </p>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {collectFields.map((field, i) => (
+                      <span key={i} className="flex items-center gap-1 bg-blue-900 text-blue-200 px-3 py-1 rounded-full text-sm">
+                        {field}
+                        <button
+                          onClick={() => setCollectFields((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="text-blue-300 hover:text-white ml-1"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                    {collectFields.length === 0 && <p className="text-gray-500 text-sm">尚未設定欄位</p>}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="新增欄位（例如：姓名、電話、生日）"
+                      value={newField}
+                      onChange={(e) => setNewField(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && newField.trim()) {
+                          setCollectFields((prev) => [...prev, newField.trim()]);
+                          setNewField("");
+                        }
+                      }}
+                      className="flex-1 bg-gray-800 px-4 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                    <button
+                      onClick={() => {
+                        if (newField.trim()) {
+                          setCollectFields((prev) => [...prev, newField.trim()]);
+                          setNewField("");
+                        }
+                      }}
+                      className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm transition"
+                    >
+                      + 新增
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="新增欄位（例如：姓名、電話、生日）"
-                    value={newField}
-                    onChange={(e) => setNewField(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && newField.trim()) {
-                        setCollectFields((prev) => [...prev, newField.trim()]);
-                        setNewField("");
-                      }
-                    }}
-                    className="flex-1 bg-gray-800 px-4 py-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  />
-                  <button
-                    onClick={() => {
-                      if (newField.trim()) {
-                        setCollectFields((prev) => [...prev, newField.trim()]);
-                        setNewField("");
-                      }
-                    }}
-                    className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm transition"
-                  >
-                    + 新增
-                  </button>
-                </div>
-              </div>
+              )}
 
+              {/* 📋 客戶名單資料卡 — 欄位來源統一：優先用最近實際收集到的欄位，沒有再回退收集設定 */}
               <div className="mb-4 border-t border-gray-800 pt-4">
                 <label className="text-sm text-gray-300 font-medium mb-1 block">📋 客戶名單資料卡格式</label>
                 <p className="text-gray-500 text-xs mb-2">
                   客戶資料收集完後，會照這個格式排版成一張可複製的資料卡，顯示在「📋 客戶名單」。
                   用 <code className="text-blue-300">{"{欄位名}"}</code> 當佔位符，收集到的值會自動填進去。留空則每個欄位各一行。
                 </p>
-                {collectFields.length > 0 && (
-                  <button
-                    onClick={() => setCardTemplate(collectFields.map((f) => `${f}：{${f}}`).join("\n"))}
-                    className="text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded-lg mb-2 transition"
-                  >
-                    ✨ 依收集欄位自動產生範本
-                  </button>
-                )}
-                {submissionFields.length > 0 && (
-                  <div className="mb-2">
-                    <p className="text-gray-500 text-xs mb-1">
-                      點欄位插入到游標位置（來自最近的客戶名單，拼字保證對得上）：
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {submissionFields.map((f) => (
+                {(() => {
+                  const cardFields = submissionFields.length ? submissionFields : collectFields;
+                  if (cardFields.length === 0) {
+                    return (
+                      <p className="text-gray-600 text-xs mb-2">
+                        {systemPrompt.trim()
+                          ? "欄位由「角色 / 對話設定」決定；等有第一筆客戶名單後，這裡會列出可點插入的欄位。"
+                          : "先在上方「要收集的欄位」新增欄位，這裡就會出現可點插入的按鈕。"}
+                      </p>
+                    );
+                  }
+                  return (
+                    <div className="mb-2">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <p className="text-gray-500 text-xs">
+                          點欄位插入到游標位置（{submissionFields.length ? "來自最近的客戶名單" : "來自收集欄位設定"}，拼字保證對得上）：
+                        </p>
                         <button
-                          key={f}
                           type="button"
-                          onClick={() => insertField(f)}
-                          className="text-xs bg-blue-900/60 hover:bg-blue-800 text-blue-200 px-2.5 py-1 rounded-full transition"
+                          onClick={() => setCardTemplate(cardFields.map((f) => `${f}：{${f}}`).join("\n"))}
+                          className="text-xs bg-gray-700 hover:bg-gray-600 px-2.5 py-0.5 rounded-lg transition shrink-0"
                         >
-                          + {f}
+                          ✨ 一鍵套用全部欄位
                         </button>
-                      ))}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {cardFields.map((f) => (
+                          <button
+                            key={f}
+                            type="button"
+                            onClick={() => insertField(f)}
+                            className="text-xs bg-blue-900/60 hover:bg-blue-800 text-blue-200 px-2.5 py-1 rounded-full transition"
+                          >
+                            + {f}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
                 <textarea
                   ref={cardTemplateRef}
                   value={cardTemplate}

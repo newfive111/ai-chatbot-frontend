@@ -286,6 +286,7 @@ export default function BotDetailPage() {
   const [savingSheet, setSavingSheet] = useState(false);
   const [cardTemplate, setCardTemplate] = useState("");
   const [submissionFields, setSubmissionFields] = useState<string[]>([]);
+  const [showCardEditor, setShowCardEditor] = useState(false);
   const cardTemplateRef = useRef<HTMLTextAreaElement>(null);
 
   // ── 客戶名單（submissions）──
@@ -1149,6 +1150,20 @@ export default function BotDetailPage() {
     }
   };
 
+  // 只存資料卡格式（客戶名單 tab 用）
+  const saveCardTemplate = async () => {
+    setSavingSheet(true);
+    try {
+      await axios.patch(`${API}/bots/${id}`, { card_template: cardTemplate }, { headers });
+      setMessage("✅ 資料卡格式已儲存");
+    } catch (err: any) {
+      setMessage(`❌ ${err?.response?.data?.detail || "儲存失敗"}`);
+    } finally {
+      setSavingSheet(false);
+      setTimeout(() => setMessage(""), 3000);
+    }
+  };
+
   // ── 客戶名單（submissions）──
   const fetchSubmissions = async () => {
     setSubmissionsLoading(true);
@@ -1655,10 +1670,16 @@ export default function BotDetailPage() {
               <div>
                 <h2 className={CARD_TITLE}>📋 客戶名單</h2>
                 <p className="text-gray-400 text-sm mt-0.5">
-                  客戶資料收集完成後自動整理成資料卡，點「複製」即可貼到你的業務表。格式可在「⚙️ 設定 → 客戶名單資料卡格式」調整。
+                  客戶資料收集完成後自動整理成資料卡，點「複製」即可貼到你的業務表。想調排版點右上「🎨 資料卡格式」。
                 </p>
               </div>
               <div className="flex gap-2 shrink-0">
+                <button
+                  onClick={() => { setShowCardEditor((v) => !v); if (!showCardEditor) fetchSubmissionFields(); }}
+                  className={`text-sm px-4 py-2 rounded-lg transition ${showCardEditor ? "bg-blue-600 hover:bg-blue-500 text-white" : "bg-gray-800 hover:bg-gray-700"}`}
+                >
+                  🎨 資料卡格式
+                </button>
                 <button
                   onClick={exportCsv}
                   className="text-sm bg-green-700 hover:bg-green-600 px-4 py-2 rounded-lg transition"
@@ -1673,6 +1694,78 @@ export default function BotDetailPage() {
                 </button>
               </div>
             </div>
+
+            {/* 🎨 資料卡格式（可收放）*/}
+            {showCardEditor && (
+              <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm text-gray-200 font-medium">📋 客戶名單資料卡格式</label>
+                  <button
+                    onClick={() => setShowCardEditor(false)}
+                    className="text-gray-500 hover:text-white text-sm"
+                  >
+                    收起 ✕
+                  </button>
+                </div>
+                <p className="text-gray-500 text-xs mb-2">
+                  客戶資料收集完後，會照這個格式排版成上方那種可複製的資料卡。
+                  用 <code className="text-blue-300">{"{欄位名}"}</code> 當佔位符，收集到的值會自動填進去。留空則每個欄位各一行。
+                </p>
+                {(() => {
+                  const cardFields = submissionFields.length ? submissionFields : collectFields;
+                  if (cardFields.length === 0) {
+                    return (
+                      <p className="text-gray-600 text-xs mb-2">
+                        等有第一筆客戶名單後，這裡會列出可點插入的欄位（拼字保證對得上）。
+                      </p>
+                    );
+                  }
+                  return (
+                    <div className="mb-2">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <p className="text-gray-500 text-xs">
+                          點欄位插入到游標位置（{submissionFields.length ? "來自最近的客戶名單" : "來自收集欄位設定"}，拼字保證對得上）：
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setCardTemplate(cardFields.map((f) => `${f}：{${f}}`).join("\n"))}
+                          className="text-xs bg-gray-700 hover:bg-gray-600 px-2.5 py-0.5 rounded-lg transition shrink-0"
+                        >
+                          ✨ 一鍵套用全部欄位
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {cardFields.map((f) => (
+                          <button
+                            key={f}
+                            type="button"
+                            onClick={() => insertField(f)}
+                            className="text-xs bg-blue-900/60 hover:bg-blue-800 text-blue-200 px-2.5 py-1 rounded-full transition"
+                          >
+                            + {f}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+                <textarea
+                  ref={cardTemplateRef}
+                  value={cardTemplate}
+                  onChange={(e) => setCardTemplate(e.target.value)}
+                  placeholder={"姓名：{姓名}\n電話：{電話}\n需求金額：{需求金額}"}
+                  rows={8}
+                  className="w-full bg-gray-800 px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono leading-relaxed resize-y"
+                />
+                <button
+                  onClick={saveCardTemplate}
+                  disabled={savingSheet}
+                  className={`${BTN_PRIMARY} mt-3 px-6 py-2.5`}
+                >
+                  {savingSheet ? "儲存中..." : "💾 儲存格式"}
+                </button>
+              </div>
+            )}
 
             {/* 搜尋 + 狀態過濾 */}
             {submissions.length > 0 && (
@@ -2320,62 +2413,9 @@ export default function BotDetailPage() {
                 </div>
               )}
 
-              {/* 📋 客戶名單資料卡 — 欄位來源統一：優先用最近實際收集到的欄位，沒有再回退收集設定 */}
-              <div className="mb-4 border-t border-gray-800 pt-4">
-                <label className="text-sm text-gray-300 font-medium mb-1 block">📋 客戶名單資料卡格式</label>
-                <p className="text-gray-500 text-xs mb-2">
-                  客戶資料收集完後，會照這個格式排版成一張可複製的資料卡，顯示在「📋 客戶名單」。
-                  用 <code className="text-blue-300">{"{欄位名}"}</code> 當佔位符，收集到的值會自動填進去。留空則每個欄位各一行。
-                </p>
-                {(() => {
-                  const cardFields = submissionFields.length ? submissionFields : collectFields;
-                  if (cardFields.length === 0) {
-                    return (
-                      <p className="text-gray-600 text-xs mb-2">
-                        {systemPrompt.trim()
-                          ? "欄位由「角色 / 對話設定」決定；等有第一筆客戶名單後，這裡會列出可點插入的欄位。"
-                          : "先在上方「要收集的欄位」新增欄位，這裡就會出現可點插入的按鈕。"}
-                      </p>
-                    );
-                  }
-                  return (
-                    <div className="mb-2">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <p className="text-gray-500 text-xs">
-                          點欄位插入到游標位置（{submissionFields.length ? "來自最近的客戶名單" : "來自收集欄位設定"}，拼字保證對得上）：
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => setCardTemplate(cardFields.map((f) => `${f}：{${f}}`).join("\n"))}
-                          className="text-xs bg-gray-700 hover:bg-gray-600 px-2.5 py-0.5 rounded-lg transition shrink-0"
-                        >
-                          ✨ 一鍵套用全部欄位
-                        </button>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {cardFields.map((f) => (
-                          <button
-                            key={f}
-                            type="button"
-                            onClick={() => insertField(f)}
-                            className="text-xs bg-blue-900/60 hover:bg-blue-800 text-blue-200 px-2.5 py-1 rounded-full transition"
-                          >
-                            + {f}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()}
-                <textarea
-                  ref={cardTemplateRef}
-                  value={cardTemplate}
-                  onChange={(e) => setCardTemplate(e.target.value)}
-                  placeholder={"姓名：{姓名}\n電話：{電話}\n需求金額：{需求金額}"}
-                  rows={8}
-                  className="w-full bg-gray-800 px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono leading-relaxed resize-y"
-                />
-              </div>
+              <p className="text-gray-500 text-xs mb-4 border-t border-gray-800 pt-4">
+                💡 客戶名單的「資料卡排版格式」已移到「📋 客戶名單」分頁，點右上角「🎨 資料卡格式」即可調整。
+              </p>
 
               <button
                 onClick={saveSheet}

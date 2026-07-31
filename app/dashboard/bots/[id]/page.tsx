@@ -285,6 +285,8 @@ export default function BotDetailPage() {
   const [newField, setNewField] = useState("");
   const [savingSheet, setSavingSheet] = useState(false);
   const [cardTemplate, setCardTemplate] = useState("");
+  const [submissionFields, setSubmissionFields] = useState<string[]>([]);
+  const cardTemplateRef = useRef<HTMLTextAreaElement>(null);
 
   // ── 客戶名單（submissions）──
   type Submission = {
@@ -405,6 +407,7 @@ export default function BotDetailPage() {
       setSheetId(data.sheet_id || "");
       setCollectFields(data.collect_fields || []);
       setCardTemplate(data.card_template || "");
+      fetchSubmissionFields();
       setSystemPrompt(data.system_prompt || "");
       const pf = data.persona_form;
       if (pf && typeof pf === "object") {
@@ -1157,6 +1160,36 @@ export default function BotDetailPage() {
     } finally {
       setSubmissionsLoading(false);
     }
+  };
+
+  // 抓最近幾筆 submission 實際出現的欄位，給範本編輯器當可點插入的按鈕
+  const fetchSubmissionFields = async () => {
+    try {
+      const { data } = await axios.get(`${API}/bots/${id}/submission-fields`, { headers });
+      setSubmissionFields(data.fields || []);
+    } catch {
+      setSubmissionFields([]);
+    }
+  };
+
+  // 在範本 textarea 游標處插入 {欄位}
+  const insertField = (field: string) => {
+    const snippet = `{${field}}`;
+    const el = cardTemplateRef.current;
+    if (!el) {
+      setCardTemplate((prev) => prev + snippet);
+      return;
+    }
+    const start = el.selectionStart ?? cardTemplate.length;
+    const end = el.selectionEnd ?? cardTemplate.length;
+    const next = cardTemplate.slice(0, start) + snippet + cardTemplate.slice(end);
+    setCardTemplate(next);
+    // 插入後把游標移到插入內容之後
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + snippet.length;
+      el.setSelectionRange(pos, pos);
+    });
   };
 
   const copyCard = async (s: Submission) => {
@@ -2295,7 +2328,27 @@ export default function BotDetailPage() {
                     ✨ 依收集欄位自動產生範本
                   </button>
                 )}
+                {submissionFields.length > 0 && (
+                  <div className="mb-2">
+                    <p className="text-gray-500 text-xs mb-1">
+                      點欄位插入到游標位置（來自最近的客戶名單，拼字保證對得上）：
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {submissionFields.map((f) => (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => insertField(f)}
+                          className="text-xs bg-blue-900/60 hover:bg-blue-800 text-blue-200 px-2.5 py-1 rounded-full transition"
+                        >
+                          + {f}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <textarea
+                  ref={cardTemplateRef}
                   value={cardTemplate}
                   onChange={(e) => setCardTemplate(e.target.value)}
                   placeholder={"姓名：{姓名}\n電話：{電話}\n需求金額：{需求金額}"}

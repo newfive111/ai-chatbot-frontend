@@ -36,6 +36,8 @@ export default function TeamPage() {
   const [bound, setBound] = useState(false);
   const [bindCode, setBindCode] = useState("");
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
+  const [joinCode, setJoinCode] = useState<string | null>(null);
+  const [joinRole, setJoinRole] = useState("editor");
 
   const canManage = myRole === "owner" || myRole === "admin";
 
@@ -67,7 +69,7 @@ export default function TeamPage() {
     const org = orgs.find(o => o.id === orgId);
     setMyRole(org?.role || "viewer");
     loadMembers();
-    if (org?.role === "owner" || org?.role === "admin") loadInvites();
+    if (org?.role === "owner" || org?.role === "admin") { loadInvites(); loadJoinCode(); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, token]);
 
@@ -85,6 +87,34 @@ export default function TeamPage() {
       const res = await axios.get(`${API}/orgs/${orgId}/invites`, authHeader());
       setInvites(res.data);
     } catch { /* ignore */ }
+  };
+
+  const loadJoinCode = async () => {
+    try {
+      const res = await axios.get(`${API}/orgs/${orgId}/join-code`, authHeader());
+      setJoinCode(res.data.code || null);
+      if (res.data.role) setJoinRole(res.data.role);
+    } catch { /* ignore */ }
+  };
+
+  const genJoinCode = async () => {
+    setMsg("");
+    try {
+      const res = await axios.post(`${API}/orgs/${orgId}/join-code`, { role: joinRole }, authHeader());
+      setJoinCode(res.data.code);
+    } catch (e: any) {
+      setMsg(e?.response?.data?.detail || "產生團隊邀請碼失敗");
+    }
+  };
+
+  const revokeJoinCode = async () => {
+    if (!confirm("停用後，這組碼就不能再讓新員工加入（已加入的不受影響）。確定？")) return;
+    try {
+      await axios.delete(`${API}/orgs/${orgId}/join-code`, authHeader());
+      setJoinCode(null);
+    } catch (e: any) {
+      setMsg(e?.response?.data?.detail || "停用失敗");
+    }
   };
 
   const createInvite = async () => {
@@ -205,10 +235,47 @@ export default function TeamPage() {
               )}
             </div>
 
-            {/* 邀請成員 */}
+            {/* 團隊邀請碼（員工用 LINE 加入，免網址）*/}
             {canManage && (
               <div className="bg-gray-900 rounded-xl p-5 mb-6">
-                <h2 className="font-semibold mb-3">邀請成員</h2>
+                <h2 className="font-semibold mb-1">團隊邀請碼（推薦）</h2>
+                <p className="text-xs text-gray-500 mb-3">
+                  產生一組 6 碼發給所有員工。員工只要「加管理助手 bot 好友 → 傳這組碼」，
+                  就會自動加入團隊並綁定，免網址、免登入後台。一組碼可多人重複使用。
+                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <select
+                    value={joinRole}
+                    onChange={e => setJoinRole(e.target.value)}
+                    className="bg-gray-800 px-4 py-2 rounded-lg outline-none"
+                  >
+                    {ASSIGNABLE_ROLES.map(r => (
+                      <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={genJoinCode}
+                    className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium transition"
+                  >
+                    {joinCode ? "重新產生" : "產生團隊邀請碼"}
+                  </button>
+                  {joinCode && (
+                    <button onClick={revokeJoinCode} className="text-red-400 text-sm hover:underline">停用</button>
+                  )}
+                </div>
+                {joinCode && (
+                  <div className="mt-3 bg-gray-800 rounded-lg px-4 py-3 flex items-center gap-3">
+                    <p className="text-3xl font-mono font-bold tracking-[0.3em] text-green-300 flex-1">{joinCode}</p>
+                    <button onClick={() => copyUrl(joinCode)} className="text-blue-400 text-sm hover:underline shrink-0">複製</button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 邀請成員（網址備援）*/}
+            {canManage && (
+              <div className="bg-gray-900 rounded-xl p-5 mb-6">
+                <h2 className="font-semibold mb-3">邀請連結（備援）</h2>
                 <div className="flex flex-wrap items-center gap-3">
                   <select
                     value={inviteRole}

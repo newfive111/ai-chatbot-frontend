@@ -292,13 +292,13 @@ export default function BotDetailPage() {
   // ── 客戶名單（submissions）──
   type Submission = {
     id: string; session_id?: string; display_name?: string;
-    data?: Record<string, string>; card_text?: string; handled?: boolean; created_at: string;
+    data?: Record<string, string>; card_text?: string; handled?: boolean; status?: string; created_at: string;
   };
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [subSearch, setSubSearch] = useState("");
-  const [subFilter, setSubFilter] = useState<"all" | "pending" | "handled">("all");
+  const [subFilter, setSubFilter] = useState<"all" | "pending" | "handled" | "collecting">("all");
 
   // LINE 串接
   const [lineSecret, setLineSecret] = useState("");
@@ -1276,6 +1276,7 @@ export default function BotDetailPage() {
   const filteredSubmissions = submissions.filter((s) => {
     if (subFilter === "pending" && s.handled) return false;
     if (subFilter === "handled" && !s.handled) return false;
+    if (subFilter === "collecting" && s.status !== "partial") return false;
     if (subSearch.trim()) {
       const q = subSearch.trim().toLowerCase();
       const hay = [s.display_name || "", s.card_text || "", ...Object.values(s.data || {})]
@@ -1777,7 +1778,7 @@ export default function BotDetailPage() {
                   className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
                 />
                 <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-lg p-1 shrink-0">
-                  {([["all", "全部"], ["pending", "待處理"], ["handled", "已處理"]] as const).map(([v, label]) => (
+                  {([["all", "全部"], ["pending", "待處理"], ["collecting", "收集中"], ["handled", "已處理"]] as const).map(([v, label]) => (
                     <button
                       key={v}
                       onClick={() => setSubFilter(v)}
@@ -1806,10 +1807,11 @@ export default function BotDetailPage() {
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 {filteredSubmissions.map((s) => (
-                  <div key={s.id} className={`bg-gray-900 rounded-xl border overflow-hidden flex flex-col ${s.handled ? "border-green-800/60" : "border-gray-800"}`}>
+                  <div key={s.id} className={`bg-gray-900 rounded-xl border overflow-hidden flex flex-col ${s.handled ? "border-green-800/60" : s.status === "partial" ? "border-amber-700/60" : "border-gray-800"}`}>
                     <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-800 bg-gray-800/40">
                       <span className="font-medium text-sm truncate flex items-center gap-2">
                         {s.handled && <span className="text-green-400 text-xs">✅</span>}
+                        {s.status === "partial" && <span className="text-amber-400 text-xs bg-amber-900/40 px-1.5 py-0.5 rounded shrink-0">收集中</span>}
                         {s.display_name || "未具名"}
                       </span>
                       <span className="text-xs text-gray-500 shrink-0 ml-2">

@@ -5,6 +5,9 @@ import axios from "axios";
 import Sidebar from "../components/Sidebar";
 
 const API = "/api/proxy";
+// 管理助手 bot 加好友連結（LINE 官方帳號）
+const ADMIN_LINE_ADD_URL = "https://lin.ee/R2oAtF4";
+const ADMIN_LINE_QR = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(ADMIN_LINE_ADD_URL)}`;
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "擁有者",
@@ -233,6 +236,34 @@ export default function TeamPage() {
                   <p className="text-3xl font-mono font-bold tracking-[0.3em] text-green-300">{bindCode}</p>
                 </div>
               )}
+            </div>
+
+            {/* 加管理助手好友（掃碼／點按鈕）*/}
+            <div className="bg-gray-900 rounded-xl p-5 mb-6">
+              <h2 className="font-semibold mb-1">加管理助手好友</h2>
+              <p className="text-xs text-gray-500 mb-3">
+                第一步：員工先加管理助手 bot 好友。手機直接點按鈕，電腦用手機掃 QR 碼。
+              </p>
+              <div className="flex items-center gap-4 flex-wrap">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={ADMIN_LINE_QR} alt="管理助手 QR" className="w-36 h-36 rounded-lg bg-white p-1" />
+                <div className="flex flex-col gap-2">
+                  <a
+                    href={ADMIN_LINE_ADD_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-medium transition text-center"
+                  >
+                    加入好友
+                  </a>
+                  <button
+                    onClick={() => copyUrl(ADMIN_LINE_ADD_URL)}
+                    className="text-blue-400 text-sm hover:underline"
+                  >
+                    複製加好友連結
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* 團隊邀請碼（員工用 LINE 加入，免網址）*/}

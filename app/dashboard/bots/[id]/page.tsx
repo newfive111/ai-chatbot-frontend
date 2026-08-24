@@ -979,6 +979,60 @@ export default function BotDetailPage() {
     setLogsLoading(false);
   };
 
+  // ── 匯出對話（下載成 txt 檔，並自動 AI 分析）──
+  const [exportingLogs, setExportingLogs] = useState(false);
+  const exportConversations = async () => {
+    if (!id) return;
+    setExportingLogs(true);
+    try {
+      const res = await axios.get(`${API}/bots/${id}/conversations/sessions`, {
+        params: { days: analysisDays },
+        headers,
+      });
+      const data = res.data as {
+        total_sessions: number;
+        total_messages: number;
+        sessions: {
+          session_id: string; channel: string; message_count: number;
+          first_at: string; last_at: string; completed: boolean;
+          display_name?: string;
+          messages: { q: string; a: string; at: string }[];
+        }[];
+      };
+      const fmt = (t: string) => new Date(t).toLocaleString("zh-TW", { hour12: false });
+      const rangeLabel = analysisDays > 0 ? `近 ${analysisDays} 天` : "全部";
+      const lines: string[] = [];
+      lines.push(`對話匯出・${rangeLabel}`);
+      lines.push(`匯出時間：${new Date().toLocaleString("zh-TW", { hour12: false })}`);
+      lines.push(`共 ${data.total_sessions} 組對話・${data.total_messages} 則訊息`);
+      lines.push("");
+      data.sessions.forEach((s, i) => {
+        lines.push("========================================");
+        lines.push(`【對話 ${i + 1}】${s.display_name || s.session_id}`);
+        lines.push(`渠道：${s.channel}・${s.message_count} 則・${fmt(s.first_at)}${s.first_at !== s.last_at ? ` → ${fmt(s.last_at)}` : ""}${s.completed ? "・✅ 完成收集" : ""}`);
+        lines.push("----------------------------------------");
+        s.messages.forEach((m) => {
+          if (m.q) lines.push(`客戶：${m.q}`);
+          if (m.a) lines.push(`Bot ：${m.a}`);
+        });
+        lines.push("");
+      });
+      const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/plain;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const dateStr = new Date().toISOString().slice(0, 10);
+      a.download = `對話紀錄_${rangeLabel}_${dateStr}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      // 自動 AI 分析
+      fetchAiReport();
+    } catch (err: any) {
+      alert(`❌ ${err?.response?.data?.detail || "匯出失敗"}`);
+    }
+    setExportingLogs(false);
+  };
+
   // ── 真人接手 / 恢復 AI（靜音切換）──
   const [mutingSid, setMutingSid] = useState<string | null>(null);
   const toggleMute = async (sessionId: string, currentlyMuted: boolean) => {
@@ -1417,7 +1471,7 @@ export default function BotDetailPage() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-gray-800 overflow-x-auto">
+        <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-800">
           {(["knowledge", "persona", "settings", "embed", "chat", "inbox", "submissions", "analytics"] as const).map((t) => (
             <button
               key={t}
@@ -2969,13 +3023,20 @@ export default function BotDetailPage() {
                 {aiReportLoading ? "⏳ AI 分析中（約 15-30 秒）..." : aiReport ? "🔄 重新分析" : "✨ 開始 AI 分析"}
               </button>
 
-              {/* 查看對話紀錄 / 清除資料 */}
+              {/* 查看對話紀錄 / 匯出 / 清除資料 */}
               <div className="flex gap-2 mb-4">
                 <button
                   onClick={fetchLogs}
                   className="flex-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-blue-600 py-2 rounded-xl text-xs text-gray-300 hover:text-blue-300 transition"
                 >
                   📋 查看對話紀錄
+                </button>
+                <button
+                  onClick={exportConversations}
+                  disabled={exportingLogs}
+                  className="flex-1 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 border border-gray-700 hover:border-green-600 py-2 rounded-xl text-xs text-gray-300 hover:text-green-300 transition"
+                >
+                  {exportingLogs ? "匯出中..." : "⬇ 匯出對話"}
                 </button>
                 <button
                   onClick={cleanFortune}

@@ -1471,16 +1471,17 @@ export default function BotDetailPage() {
         )}
 
         {/* Tabs */}
-        <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-800">
+        <div className="flex flex-wrap gap-2 mb-6">
           {(["knowledge", "persona", "settings", "embed", "chat", "inbox", "submissions", "analytics"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`shrink-0 px-4 py-2 text-sm font-medium transition border-b-2 -mb-px ${
+              className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition ${
                 tab === t
-                  ? t === "analytics" ? "border-yellow-500 text-white"
-                  : "border-blue-500 text-white"
-                  : "border-transparent text-gray-500 hover:text-white"
+                  ? t === "analytics"
+                    ? "bg-yellow-500 text-gray-900"
+                    : "bg-blue-600 text-white"
+                  : "bg-gray-800/70 text-gray-400 hover:bg-gray-700 hover:text-white"
               }`}
             >
               {{ knowledge: "📚 知識庫", inbox: "📥 客服對話", submissions: "📋 客戶名單", persona: "🤖 角色", chat: "💬 測試對話", embed: "🔌 渠道串接", settings: "⚙️ 運作設定", analytics: "📊 數據" }[t]}

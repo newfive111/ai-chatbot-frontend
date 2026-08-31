@@ -308,6 +308,13 @@ export default function BotDetailPage() {
   const [lineVerifying, setLineVerifying] = useState(false);
   const [lineVerify, setLineVerify] = useState<{ oa_name?: string; oa_picture?: string; webhook_set?: boolean; webhook_active?: boolean; warnings?: string[] } | null>(null);
 
+  // 客戶單外送 Webhook（打到合作方系統）
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [webhookSecret, setWebhookSecret] = useState("");
+  const [webhookEnabled, setWebhookEnabled] = useState(false);
+  const [savingWebhook, setSavingWebhook] = useState(false);
+  const [testingWebhook, setTestingWebhook] = useState(false);
+
   // Instagram
   const [debounceSeconds, setDebounceSeconds] = useState(15);
   const [savingDebounce, setSavingDebounce] = useState(false);
@@ -435,6 +442,9 @@ export default function BotDetailPage() {
       setDebounceSeconds(data.debounce_seconds ?? 15);
       setObserveMode(!!data.observe_mode);
       setInstagramConfigured(!!data.instagram_page_token);
+      setWebhookUrl(data.webhook_url || "");
+      setWebhookSecret(data.webhook_secret || "");
+      setWebhookEnabled(!!data.webhook_enabled);
     } catch (err: any) {
       console.error("[BotDetail] 載入 Bot 設定失敗", err?.response?.status, err?.message);
       setMessage("⚠️ 載入設定失敗，請重新整理頁面");
@@ -865,6 +875,52 @@ export default function BotDetailPage() {
     } finally {
       setLineVerifying(false);
       setTimeout(() => setMessage(""), 4000);
+    }
+  };
+
+  // ── 客戶單外送 Webhook：儲存設定 ──
+  const saveWebhook = async () => {
+    setSavingWebhook(true);
+    try {
+      await axios.patch(`${API}/bots/${id}`, {
+        webhook_url: webhookUrl.trim(),
+        webhook_secret: webhookSecret.trim(),
+        webhook_enabled: webhookEnabled,
+      }, { headers });
+      setMessage("✅ Webhook 設定已儲存");
+    } catch (err: any) {
+      setMessage(`❌ ${err?.response?.data?.detail || "儲存失敗"}`);
+    } finally {
+      setSavingWebhook(false);
+      setTimeout(() => setMessage(""), 4000);
+    }
+  };
+
+  // ── 客戶單外送 Webhook：送一筆測試單 ──
+  const testWebhook = async () => {
+    setTestingWebhook(true);
+    try {
+      // 先存目前填的網址與金鑰，再送測試
+      await axios.patch(`${API}/bots/${id}`, {
+        webhook_url: webhookUrl.trim(),
+        webhook_secret: webhookSecret.trim(),
+      }, { headers });
+      const res = await axios.post(`${API}/bots/${id}/webhook/test`, {}, { headers });
+      const { ok, status_code, response } = res.data;
+      if (ok && status_code === 200) {
+        setMessage(`✅ 對方已收到測試單（200）${/duplicat/i.test(response || "") ? "・對方標示為重複" : ""}`);
+      } else if (status_code === 403) {
+        setMessage("❌ 被擋（403）：金鑰可能不對，請跟對方確認 X-Intake-Key");
+      } else if (status_code === 400) {
+        setMessage("❌ 格式錯誤（400）：資料格式對方不收，把回應貼給工程師看");
+      } else {
+        setMessage(`❌ 送出失敗（${status_code ?? "無回應"}）：${response || "連不到對方網址"}`);
+      }
+    } catch (err: any) {
+      setMessage(`❌ ${err?.response?.data?.detail || "測試失敗"}`);
+    } finally {
+      setTestingWebhook(false);
+      setTimeout(() => setMessage(""), 6000);
     }
   };
 
@@ -2956,6 +3012,76 @@ export default function BotDetailPage() {
                   </button>
                 </div>
               </div>
+            </div>
+
+            {/* 客戶單外送 Webhook */}
+            <div className={CARD}>
+              <div className="flex items-center justify-between mb-1">
+                <h2 className={CARD_TITLE}>🔗 客戶單自動送到合作方</h2>
+                {webhookEnabled && webhookUrl && (
+                  <span className="text-green-400 text-xs bg-green-900/40 border border-green-800 px-2 py-0.5 rounded-full">✅ 已啟用</span>
+                )}
+              </div>
+              <p className="text-gray-400 text-sm mb-5">
+                客戶資料收集完成（客戶按確認）後，系統會自動把這張客戶單打到對方系統。把對方給你的「網址」和「金鑰」貼進來即可。
+              </p>
+
+              {/* 網址 */}
+              <div className="mb-4">
+                <label className="text-sm text-gray-400 mb-1.5 block">對方 Webhook 網址（POST）</label>
+                <input
+                  type="text"
+                  placeholder="https://對方網域/api/.../lead-intake/..."
+                  value={webhookUrl}
+                  onChange={(e) => setWebhookUrl(e.target.value)}
+                  className="w-full bg-gray-800 px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                />
+              </div>
+
+              {/* 金鑰 */}
+              <div className="mb-4">
+                <label className="text-sm text-gray-400 mb-1.5 block">金鑰（X-Intake-Key）</label>
+                <input
+                  type="password"
+                  placeholder="貼上對方給的金鑰..."
+                  value={webhookSecret}
+                  onChange={(e) => setWebhookSecret(e.target.value)}
+                  className="w-full bg-gray-800 px-4 py-3 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                />
+                <p className="text-gray-500 text-xs mt-1.5">這組金鑰等同「可以往對方塞客戶單」的權限，只存在後台、不會外流。</p>
+              </div>
+
+              {/* 啟用開關 */}
+              <label className="flex items-center gap-3 mb-5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={webhookEnabled}
+                  onChange={(e) => setWebhookEnabled(e.target.checked)}
+                  className="w-5 h-5 accent-blue-500"
+                />
+                <span className="text-sm text-gray-300">啟用自動送單（關閉時只會保留設定，不會送出）</span>
+              </label>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={saveWebhook}
+                  disabled={savingWebhook || testingWebhook}
+                  className={`${BTN_PRIMARY} flex-1 py-3`}
+                >
+                  {savingWebhook ? "儲存中..." : "💾 儲存設定"}
+                </button>
+                <button
+                  onClick={testWebhook}
+                  disabled={testingWebhook || savingWebhook || !webhookUrl.trim()}
+                  className="px-4 py-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-sm font-medium transition disabled:opacity-50"
+                  title="送一筆測試客戶單給對方，確認能收到"
+                >
+                  {testingWebhook ? "送測試中..." : "📤 送測試單"}
+                </button>
+              </div>
+              <p className="text-gray-500 text-xs mt-3">
+                測試會送一筆假資料（姓名：測試客戶）給對方；對方收到會回「200」。真實客戶單只有在「有電話且客戶確認完成」時才會送出。
+              </p>
             </div>
 
           </div>
